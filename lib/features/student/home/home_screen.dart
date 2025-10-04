@@ -15,28 +15,62 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    // Add navigation logic for different tabs here
+    switch (index) {
+      case 0:
+        // Already on Home
+        break;
+      case 1:
+        // Navigate to Chat
+        print('Navigate to Chat');
+        break;
+      case 2:
+        // Navigate to Profile
+        print('Navigate to Profile');
+        break;
+      case 3:
+        // Navigate to Settings
+        print('Navigate to Settings');
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFf0f4ff),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF60a5fa),
+        elevation: 0,
+        title: const Text(
+          'STUDYZEE',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            onPressed: () {
+              print('Notifications pressed');
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: const Text(
-                  'STUDYZEE',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1f2937),
-                  ),
-                ),
-              ),
-
               // Profile Section
               Container(
                 width: double.infinity,
@@ -183,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(builder: (context) => ExamScreen()),
                       );
-                      ('Navigate to Exam');
+                      print('Navigate to Exam');
                     },
                   ),
                   _buildFeatureCard(
@@ -204,12 +238,37 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 20),
-
-              // Bottom Navigation
-              _buildBottomNavigation(),
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF60a5fa),
+        unselectedItemColor: Colors.grey.shade400,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
@@ -261,53 +320,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildBottomNavItem(Icons.home, 'Home', true),
-          _buildBottomNavItem(Icons.chat_bubble_outline, 'Chat', false),
-          _buildBottomNavItem(Icons.person_outline, 'Profile', false),
-          _buildBottomNavItem(Icons.settings_outlined, 'Settings', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, bool isSelected) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFF60a5fa).withOpacity(0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            color: isSelected ? const Color(0xFF60a5fa) : Colors.grey.shade400,
-            size: 24,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: isSelected ? const Color(0xFF60a5fa) : Colors.grey.shade400,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }

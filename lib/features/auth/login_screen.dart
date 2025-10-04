@@ -10,6 +10,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
+  String _selectedRole = 'Student'; // Default role
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               SizedBox(height: 80),
-
               SizedBox(height: 40),
               Text(
                 "Login",
@@ -41,7 +42,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 60),
+              SizedBox(height: 20),
+              Text(
+                "Select your role",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Role Selection Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildRoleButton('Student', Icons.school),
+                  SizedBox(width: 12),
+                  _buildRoleButton('Teacher', Icons.person),
+                  SizedBox(width: 12),
+                  _buildRoleButton('Parent', Icons.family_restroom),
+                ],
+              ),
+
+              SizedBox(height: 30),
               Container(
                 padding: EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -51,6 +74,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Text(
+                      "Login as $_selectedRole",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 2, 18, 69),
+                      ),
+                    ),
                     SizedBox(height: 8),
                     Text(
                       "Enter your details below",
@@ -61,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: "Email Address",
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -69,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: "Password",
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureText
@@ -97,10 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: TextButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(  builder: (context) => const HomeScreen(),),
-                            (Route<dynamic> route) => false
-                          
-                          );
+                          _handleLogin();
                         },
                         child: Text(
                           "Sign in",
@@ -133,5 +163,88 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
-     ),);}
+      ),
+    );
+  }
+
+  Widget _buildRoleButton(String role, IconData icon) {
+    bool isSelected = _selectedRole == role;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedRole = role;
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? Color.fromARGB(255, 2, 18, 69)
+                  : Colors.white,
+              size: 28,
+            ),
+            SizedBox(height: 4),
+            Text(
+              role,
+              style: TextStyle(
+                color: isSelected
+                    ? Color.fromARGB(255, 2, 18, 69)
+                    : Colors.white,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleLogin() {
+    // Navigate based on selected role
+    switch (_selectedRole) {
+      case 'Student':
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+          (Route<dynamic> route) => false,
+        );
+        break;
+      case 'Teacher':
+        // Navigate to Teacher Dashboard
+        // Navigator.pushAndRemoveUntil(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => const TeacherHomeScreen(),
+        //   ),
+        //   (Route<dynamic> route) => false,
+        // );
+        print('Navigate to Teacher Dashboard');
+        break;
+      case 'Parent':
+        // Navigate to Parent Dashboard
+        // Navigator.pushAndRemoveUntil(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => const ParentHomeScreen(),
+        //   ),
+        //   (Route<dynamic> route) => false,
+        // );
+        print('Navigate to Parent Dashboard');
+        break;
+    }
+  }
 }
