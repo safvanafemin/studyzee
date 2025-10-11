@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:studyzee/features/auth/signup_screen.dart';
+import 'package:studyzee/features/parent/home1/home1_screen.dart';
 import 'package:studyzee/features/student/home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -235,14 +236,13 @@ class _LoginScreenState extends State<LoginScreen> {
         print('Navigate to Teacher Dashboard');
         break;
       case 'Parent':
-        // Navigate to Parent Dashboard
-        // Navigator.pushAndRemoveUntil(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (context) => const ParentHomeScreen(),
-        //   ),
-        //   (Route<dynamic> route) => false,
-        // );
+               Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const Home1Screen(),
+          ),
+          (Route<dynamic> route) => false,
+        );
         print('Navigate to Parent Dashboard');
         break;
     }

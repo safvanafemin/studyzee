@@ -9,10 +9,61 @@ class UploadScreen extends StatefulWidget {
   State<UploadScreen> createState() => _UploadScreenState();
 }
 
-class _UploadScreenState extends State<UploadScreen> {
+class _UploadScreenState extends State<UploadScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   DateTime? _selectedDate;
   FilePickerResult? _filePickerResult;
   final TextEditingController _titleController = TextEditingController();
+
+  // Sample uploaded assignments
+  final List<Map<String, dynamic>> uploadedAssignments = [
+    {
+      'title': 'Mathematics - Algebra',
+      'dueDate': DateTime.now().subtract(const Duration(days: 2)),
+      'fileName': 'math_assignment.pdf',
+      'fileSize': 2048,
+      'status': 'submitted',
+      'submittedDate': DateTime.now().subtract(const Duration(days: 1)),
+    },
+    {
+      'title': 'Science - Physics',
+      'dueDate': DateTime.now().add(const Duration(days: 5)),
+      'fileName': 'physics_project.docx',
+      'fileSize': 5120,
+      'status': 'pending',
+      'submittedDate': null,
+    },
+    {
+      'title': 'English - Essay',
+      'dueDate': DateTime.now().subtract(const Duration(days: 5)),
+      'fileName': 'essay_submission.docx',
+      'fileSize': 1024,
+      'status': 'submitted',
+      'submittedDate': DateTime.now().subtract(const Duration(days: 4)),
+    },
+    {
+      'title': 'History - Project',
+      'dueDate': DateTime.now().add(const Duration(days: 10)),
+      'fileName': 'history_research.pdf',
+      'fileSize': 3072,
+      'status': 'pending',
+      'submittedDate': null,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _titleController.dispose();
+    super.dispose();
+  }
 
   // Function to show the date picker dialog
   Future<void> _selectDate(BuildContext context) async {
@@ -40,12 +91,6 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 
   @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFf8f9ff),
@@ -60,65 +105,89 @@ class _UploadScreenState extends State<UploadScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Due Date Section
-            _buildDatePickerField(context),
-            const SizedBox(height: 16),
-            // Title Section
-            _buildTitleField(),
-            const SizedBox(height: 24),
-            // File Upload Section
-            _buildFileUploadArea(),
-            const SizedBox(height: 24),
-            // Display selected file
-            if (_filePickerResult != null) _buildSelectedFileCard(),
-            const SizedBox(height: 24),
-            // Upload Button
-            ElevatedButton(
-              onPressed: () {
-                // Handle the upload logic here
-                if (_filePickerResult != null &&
-                    _selectedDate != null &&
-                    _titleController.text.isNotEmpty) {
-                  // e.g., show a success message or start the upload process
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('File submitted successfully!'),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please fill all fields and select a file.',
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue.shade600,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Submit',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.blue.shade600,
+          labelColor: Colors.blue.shade600,
+          unselectedLabelColor: Colors.grey,
+          tabs: const [
+            Tab(text: 'Upload'),
+            Tab(text: 'View Submissions'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Upload Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Due Date Section
+                _buildDatePickerField(context),
+                const SizedBox(height: 16),
+                // Title Section
+                _buildTitleField(),
+                const SizedBox(height: 24),
+                // File Upload Section
+                _buildFileUploadArea(),
+                const SizedBox(height: 24),
+                // Display selected file
+                if (_filePickerResult != null) _buildSelectedFileCard(),
+                const SizedBox(height: 24),
+                // Upload Button
+                ElevatedButton(
+                  onPressed: () {
+                    // Handle the upload logic here
+                    if (_filePickerResult != null &&
+                        _selectedDate != null &&
+                        _titleController.text.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('File submitted successfully!'),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please fill all fields and select a file.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.blue.shade600,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Submit',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // View Submissions Tab
+          ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: uploadedAssignments.length,
+            itemBuilder: (context, index) {
+              final assignment = uploadedAssignments[index];
+              return _buildAssignmentCard(assignment);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -199,7 +268,6 @@ class _UploadScreenState extends State<UploadScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.grey.shade300,
-          // style: BorderStyle.dashe,
           width: 2,
         ),
       ),
@@ -278,6 +346,160 @@ class _UploadScreenState extends State<UploadScreen> {
             icon: const Icon(Icons.close, color: Colors.grey),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAssignmentCard(Map<String, dynamic> assignment) {
+    bool isSubmitted = assignment['status'] == 'submitted';
+    bool isOverdue =
+        assignment['dueDate'].isBefore(DateTime.now()) && !isSubmitted;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    assignment['title'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSubmitted
+                        ? Colors.green.shade50
+                        : isOverdue
+                            ? Colors.red.shade50
+                            : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isSubmitted
+                        ? 'Submitted'
+                        : isOverdue
+                            ? 'Overdue'
+                            : 'Pending',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isSubmitted
+                          ? Colors.green
+                          : isOverdue
+                              ? Colors.red
+                              : Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.calendar_today,
+                    size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Text(
+                  'Due: ${DateFormat('MMM d, yyyy').format(assignment['dueDate'])}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+            if (isSubmitted) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.check_circle,
+                      size: 16, color: Colors.green.shade600),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Submitted: ${DateFormat('MMM d, yyyy').format(assignment['submittedDate']!)}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.insert_drive_file,
+                      size: 18, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          assignment['fileName'],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '${(assignment['fileSize'] / 1024).toStringAsFixed(2)} KB',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.download, color: Colors.blue),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'Downloading ${assignment['fileName']}...'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
