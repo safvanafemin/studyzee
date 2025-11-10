@@ -142,21 +142,15 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                childAspectRatio: 1.1,
+                childAspectRatio: .9,
                 children: [
-                  _buildFeatureCard(
-                    'Upload Notes',
-                    Icons.upload_file,
-                    () {
-                       Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => NotesScreen(),
-                        ),
-                      );
-                      print('Navigate to Upload Notes');
-                    },
-                  ),
+                  _buildFeatureCard('Upload Notes', Icons.upload_file, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NotesScreen()),
+                    );
+                    print('Navigate to Upload Notes');
+                  }),
                   _buildFeatureCard(
                     'Mark Attendance',
                     Icons.calendar_today,
@@ -170,32 +164,20 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                       print('Navigate to Mark Attendance');
                     },
                   ),
-                  _buildFeatureCard(
-                    'Class',
-                    Icons.video_library,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TrclassScreen(),
-                        ),
-                      );
-                      print('Navigate to Class');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    'Exam',
-                    Icons.event_available,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TrexamScreen(),
-                        ),
-                      );
-                      print('Navigate to Exam');
-                    },
-                  ),
+                  _buildFeatureCard('Class', Icons.video_library, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => TrclassScreen()),
+                    );
+                    print('Navigate to Class');
+                  }),
+                  _buildFeatureCard('Exam', Icons.event_available, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => TrexamScreen()),
+                    );
+                    print('Navigate to Exam');
+                  }),
                   _buildFeatureCard(
                     'Assignment',
                     Icons.assignment_turned_in,
@@ -221,11 +203,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => Trtimetable(),
-                        ),
-                      );
+                      context,
+                      MaterialPageRoute(builder: (context) => Trtimetable()),
+                    );
                     print('Navigate to Timetable');
                   },
                   style: ElevatedButton.styleFrom(
@@ -254,11 +234,11 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TrprogressScreen(),
-                        ),
-                      );
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TrprogressScreen(),
+                      ),
+                    );
                     print('Navigate to Student Progress');
                   },
                   style: ElevatedButton.styleFrom(
@@ -340,10 +320,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Mathematics Teacher',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -377,13 +354,29 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _buildInfoRow(Icons.email_outlined, 'Email', 'john.doe@school.com'),
+                    _buildInfoRow(
+                      Icons.email_outlined,
+                      'Email',
+                      'john.doe@school.com',
+                    ),
                     const Divider(height: 32),
-                    _buildInfoRow(Icons.phone_outlined, 'Phone', '+91 98765 43210'),
+                    _buildInfoRow(
+                      Icons.phone_outlined,
+                      'Phone',
+                      '+91 98765 43210',
+                    ),
                     const Divider(height: 32),
-                    _buildInfoRow(Icons.school_outlined, 'Department', 'Mathematics'),
+                    _buildInfoRow(
+                      Icons.school_outlined,
+                      'Department',
+                      'Mathematics',
+                    ),
                     const Divider(height: 32),
-                    _buildInfoRow(Icons.badge_outlined, 'Employee ID', 'TCH001234'),
+                    _buildInfoRow(
+                      Icons.badge_outlined,
+                      'Employee ID',
+                      'TCH001234',
+                    ),
                   ],
                 ),
               ),
@@ -447,11 +440,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 color: const Color(0xFF4285F4).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: const Color(0xFF4285F4),
-              ),
+              child: Icon(icon, size: 32, color: const Color(0xFF4285F4)),
             ),
             const SizedBox(height: 12),
             Text(
@@ -473,11 +462,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 24,
-          color: const Color(0xFF4285F4),
-        ),
+        Icon(icon, size: 24, color: const Color(0xFF4285F4)),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -485,10 +470,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
               const SizedBox(height: 4),
               Text(
@@ -526,9 +508,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
               // Handle logout logic
               print('User logged out');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),
           ),
         ],
