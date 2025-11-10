@@ -872,9 +872,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 const SnackBar(content: Text('Logged out successfully')),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),
           ),
         ],
