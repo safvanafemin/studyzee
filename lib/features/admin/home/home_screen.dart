@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:studyzee/features/admin/home/time_table_manage.dart';
+import 'package:studyzee/features/student/timetable/timetable_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -127,6 +129,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.schedule),
+            title: const Text('Manage Timetable'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AdminTimetableScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),

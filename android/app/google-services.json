@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1069992699647",
+    "project_id": "studez-c6a20",
+    "storage_bucket": "studez-c6a20.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069992699647:android:23d8441d8e7a4899e80eca",
+        "android_client_info": {
+          "package_name": "com.example.studyzee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmgCSQ8CdbztMV1NlsUyPq4X_8-UITJD4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
