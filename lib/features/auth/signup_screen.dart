@@ -13,7 +13,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
-  
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
@@ -175,8 +175,9 @@ class _SignupScreenState extends State<SignupScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                              .hasMatch(value)) {
+                          if (!RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(value)) {
                             return 'Please enter a valid email';
                           }
                           return null;
@@ -302,7 +303,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               : const Text(
                                   "Sign up",
                                   style: TextStyle(
-                                      color: Colors.white, fontSize: 16),
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
                                 ),
                         ),
                       ),
@@ -391,21 +394,26 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       // Create user with Firebase Authentication
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
       // Store additional user data in Firestore
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'uid': userCredential.user!.uid,
-        'name': _nameController.text.trim(),
+        'name': _nameController.text,
+        'namefilter': List.generate(
+          _nameController.text.length,
+          (i) => _nameController.text.substring(0, i + 1).toLowerCase(),
+        ),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'role': _selectedRole,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'status': 1,
       });
 
       // Send email verification
@@ -415,7 +423,8 @@ class _SignupScreenState extends State<SignupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Account created successfully! Please verify your email.'),
+              'Account created successfully! Please verify your email.',
+            ),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),

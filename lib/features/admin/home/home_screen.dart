@@ -1,6 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:studyzee/features/admin/home/time_table_manage.dart';
 import 'package:studyzee/features/student/timetable/timetable_screen.dart';
+
+import '../../../utils/helper/helper_snackbar.dart';
+import '../class/classmanage_screen.dart';
+import '../student/studentmanage_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -16,7 +22,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     const DashboardTab(),
     const StudentsTab(),
     const TeachersTab(),
-    const ParentsTab(),
+    const ClassSectionsTab(),
   ];
 
   @override
@@ -27,7 +33,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         backgroundColor: const Color.fromARGB(255, 2, 18, 69),
         foregroundColor: Colors.white,
         actions: [
-          // 🚀 SEND NOTIFICATION BUTTON
           IconButton(
             icon: const Icon(Icons.send_outlined),
             tooltip: 'Send Notification',
@@ -59,18 +64,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school),
-            label: 'Students',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Teachers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.family_restroom),
-            label: 'Parents',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Students'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Teachers'),
+          BottomNavigationBarItem(icon: Icon(Icons.class_), label: 'Classes'),
         ],
       ),
     );
@@ -97,16 +93,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.admin_panel_settings,
-                      size: 35, color: Color.fromARGB(255, 2, 18, 69)),
+                  child: Icon(
+                    Icons.admin_panel_settings,
+                    size: 35,
+                    color: Color.fromARGB(255, 2, 18, 69),
+                  ),
                 ),
                 SizedBox(height: 10),
                 Text(
                   'Admin Panel',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -123,9 +123,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const PaymentsScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const PaymentsScreen()),
               );
             },
           ),
@@ -165,7 +163,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             Text('Confirm Logout'),
           ],
         ),
-        content: const Text('Are you sure you want to logout from the admin panel?'),
+        content: const Text(
+          'Are you sure you want to logout from the admin panel?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -177,8 +177,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Close drawer
+              Navigator.pop(context);
+              Navigator.pop(context);
               _performLogout(context);
             },
             child: const Text('Logout'),
@@ -189,7 +189,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   void _performLogout(BuildContext context) {
-    // Show logout success message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Logged out successfully!'),
@@ -197,24 +196,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         duration: Duration(seconds: 2),
       ),
     );
-
-    // Here you would typically:
-    // 1. Clear user session
-    // 2. Clear any stored tokens
-    // 3. Navigate to login screen
-    // For now, we'll just show a success message
-    
-    // Example of navigation to login screen (uncomment if you have a login screen):
-    // Navigator.pushAndRemoveUntil(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => LoginScreen()),
-    //   (route) => false,
-    // );
   }
 }
 
+
+
 // -----------------------------------------------------------------------------
-// PAYMENTS SCREEN
+// PAYMENTS SCREEN (Keep existing)
 // -----------------------------------------------------------------------------
 
 class PaymentsScreen extends StatefulWidget {
@@ -231,21 +219,21 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       'amount': '5000',
       'date': '2024-01-15',
       'status': 'Paid',
-      'method': 'UPI'
+      'method': 'UPI',
     },
     {
       'student': 'Sarah Smith',
       'amount': '4500',
       'date': '2024-01-14',
       'status': 'Paid',
-      'method': 'Cash'
+      'method': 'Cash',
     },
     {
       'student': 'Mike Johnson',
       'amount': '5000',
       'date': '2024-01-10',
       'status': 'Pending',
-      'method': 'Bank Transfer'
+      'method': 'Bank Transfer',
     },
   ];
 
@@ -259,7 +247,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       ),
       body: Column(
         children: [
-          // Summary Cards
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -284,22 +271,19 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               ],
             ),
           ),
-
-          // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search by student name...',
                 prefixIcon: const Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 16),
-
-          // Payments List
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -320,27 +304,39 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         color: Colors.white,
                       ),
                     ),
-                    title: Text(payment['student'],
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(
+                      payment['student'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Date: ${payment['date']}'),
-                        Text('Method: ${payment['method']}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600])),
+                        Text(
+                          'Method: ${payment['method']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                       ],
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('₹${payment['amount']}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(
+                          '₹${payment['amount']}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: payment['status'] == 'Paid'
                                 ? Colors.green.withOpacity(0.1)
@@ -379,7 +375,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   Widget _buildSummaryCard(
-      String title, String amount, IconData icon, Color color) {
+    String title,
+    String amount,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -394,13 +394,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           Text(
             amount,
             style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold, color: color),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
         ],
       ),
     );
@@ -438,9 +438,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
           Text(value, style: const TextStyle(fontSize: 14)),
         ],
       ),
@@ -465,16 +466,19 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 TextField(
                   controller: studentController,
                   decoration: const InputDecoration(
-                      labelText: 'Student Name', border: OutlineInputBorder()),
+                    labelText: 'Student Name',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 15),
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                      labelText: 'Amount (₹)',
-                      border: OutlineInputBorder(),
-                      prefixText: '₹'),
+                    labelText: 'Amount (₹)',
+                    border: OutlineInputBorder(),
+                    prefixText: '₹',
+                  ),
                 ),
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
@@ -483,8 +487,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     border: OutlineInputBorder(),
                   ),
                   value: selectedMethod,
-                  items: ['Cash', 'UPI', 'Bank Transfer', 'Card']
-                      .map((String value) {
+                  items: ['Cash', 'UPI', 'Bank Transfer', 'Card'].map((
+                    String value,
+                  ) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -546,7 +551,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   });
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Payment added successfully!')),
+                    const SnackBar(
+                      content: Text('Payment added successfully!'),
+                    ),
                   );
                 }
               },
@@ -560,7 +567,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// NEW SCREEN: Send Notification Screen
+// SEND NOTIFICATION SCREEN (Keep existing)
 // -----------------------------------------------------------------------------
 
 class SendNotificationScreen extends StatelessWidget {
@@ -568,7 +575,6 @@ class SendNotificationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Dummy controllers for the text fields
     final titleController = TextEditingController();
     final bodyController = TextEditingController();
 
@@ -586,13 +592,12 @@ class SendNotificationScreen extends StatelessWidget {
             const Text(
               'Compose Message',
               style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color.fromARGB(255, 2, 18, 69)),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 2, 18, 69),
+              ),
             ),
             const Divider(height: 30),
-
-            // Target Selection (e.g., All Users, Students, Teachers)
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Target Audience',
@@ -600,20 +605,17 @@ class SendNotificationScreen extends StatelessWidget {
                 prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
               ),
               value: 'All Users',
-              items: ['All Users', 'Students', 'Teachers', 'Parents', 'Class 10']
-                  .map((String value) {
+              items: ['All Users', 'Students', 'Teachers', 'Class 10'].map((
+                String value,
+              ) {
                 return DropdownMenuItem<String>(
                   value: value,
                   child: Text(value),
                 );
               }).toList(),
-              onChanged: (String? newValue) {
-                // Logic to update target
-              },
+              onChanged: (String? newValue) {},
             ),
             const SizedBox(height: 20),
-
-            // Title Field
             TextField(
               controller: titleController,
               decoration: const InputDecoration(
@@ -623,8 +625,6 @@ class SendNotificationScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Body Field
             TextField(
               controller: bodyController,
               maxLines: 5,
@@ -635,15 +635,14 @@ class SendNotificationScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 30),
-
-            // Send Button
             ElevatedButton.icon(
               icon: const Icon(Icons.send),
-              label:
-                  const Text('Send Notification Now', style: TextStyle(fontSize: 16)),
+              label: const Text(
+                'Send Notification Now',
+                style: TextStyle(fontSize: 16),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color.fromARGB(255, 40, 167, 69), // Green for sending
+                backgroundColor: const Color.fromARGB(255, 40, 167, 69),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
@@ -651,12 +650,14 @@ class SendNotificationScreen extends StatelessWidget {
                 ),
               ),
               onPressed: () {
-                // Dummy sending logic
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text('Notification sent successfully! (Placeholder)')),
+                    content: Text(
+                      'Notification sent successfully! (Placeholder)',
+                    ),
+                  ),
                 );
-                Navigator.pop(context); // Go back to Admin Home
+                Navigator.pop(context);
               },
             ),
           ],
@@ -667,10 +668,9 @@ class SendNotificationScreen extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// TAB WIDGETS
+// TAB WIDGETS (Keep existing DashboardTab, StudentsTab, TeachersTab)
 // -----------------------------------------------------------------------------
 
-// Dashboard Tab
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
 
@@ -695,9 +695,8 @@ class DashboardTab extends StatelessWidget {
             children: [
               _buildStatCard('Students', '150', Icons.school, Colors.blue),
               _buildStatCard('Teachers', '25', Icons.person, Colors.green),
-              _buildStatCard(
-                  'Parents', '120', Icons.family_restroom, Colors.orange),
-              _buildStatCard('Classes', '30', Icons.class_, Colors.purple),
+              _buildStatCard('Classes', '12', Icons.class_, Colors.purple),
+              _buildStatCard('Payments', '₹95K', Icons.payment, Colors.orange),
             ],
           ),
           const SizedBox(height: 30),
@@ -708,14 +707,18 @@ class DashboardTab extends StatelessWidget {
           const SizedBox(height: 15),
           _buildActivityItem('New student enrolled: John Doe', '2 hours ago'),
           _buildActivityItem('Teacher updated: Jane Smith', '5 hours ago'),
-          _buildActivityItem('Payment received from Parent', '1 day ago'),
+          _buildActivityItem('New class created: Class 10-A', '1 day ago'),
         ],
       ),
     );
   }
 
   Widget _buildStatCard(
-      String title, String count, IconData icon, Color color) {
+    String title,
+    String count,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -731,13 +734,13 @@ class DashboardTab extends StatelessWidget {
           Text(
             count,
             style: TextStyle(
-                fontSize: 28, fontWeight: FontWeight.bold, color: color),
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
           const SizedBox(height: 5),
-          Text(
-            title,
-            style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-          ),
+          Text(title, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
         ],
       ),
     );
@@ -751,234 +754,15 @@ class DashboardTab extends StatelessWidget {
           child: Icon(Icons.notifications_active, size: 20),
         ),
         title: Text(activity),
-        subtitle:
-            Text(time, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        subtitle: Text(
+          time,
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
       ),
     );
   }
 }
 
-// Students Tab
-class StudentsTab extends StatefulWidget {
-  const StudentsTab({super.key});
-
-  @override
-  State<StudentsTab> createState() => _StudentsTabState();
-}
-
-class _StudentsTabState extends State<StudentsTab> {
-  List<Map<String, dynamic>> students = [
-    {
-      'name': 'John Doe',
-      'class': 'Class 10',
-      'email': 'john@example.com',
-      'phone': '1234567890'
-    },
-    {
-      'name': 'Sarah Smith',
-      'class': 'Class 9',
-      'email': 'sarah@example.com',
-      'phone': '0987654321'
-    },
-    {
-      'name': 'Mike Johnson',
-      'class': 'Class 10',
-      'email': 'mike@example.com',
-      'phone': '5551234567'
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search students...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FloatingActionButton(
-                backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-                onPressed: () => _showAddEditDialog(context),
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: students.length,
-            itemBuilder: (context, index) {
-              return _buildUserCard(
-                context,
-                students[index],
-                index,
-                'Student',
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUserCard(
-      BuildContext context, Map<String, dynamic> user, int index, String role) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-          child: Text(
-            user['name'][0],
-            style:
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
-        title: Text(user['name'],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(user['class'] ?? user['subject'] ?? ''),
-            Text(user['email'],
-                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-          ],
-          onSelected: (value) {
-            if (value == 'edit') {
-              _showAddEditDialog(context, user: user, index: index);
-            } else if (value == 'delete') {
-              _showDeleteDialog(context, index);
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  void _showAddEditDialog(BuildContext context,
-      {Map<String, dynamic>? user, int? index}) {
-    final nameController = TextEditingController(text: user?['name'] ?? '');
-    final classController = TextEditingController(text: user?['class'] ?? '');
-    final emailController = TextEditingController(text: user?['email'] ?? '');
-    final phoneController = TextEditingController(text: user?['phone'] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(user == null ? 'Add Student' : 'Edit Student'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Name', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: classController,
-                decoration: const InputDecoration(
-                    labelText: 'Class', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                    labelText: 'Email', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                    labelText: 'Phone', border: OutlineInputBorder()),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                if (index != null) {
-                  students[index] = {
-                    'name': nameController.text,
-                    'class': classController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  };
-                } else {
-                  students.add({
-                    'name': nameController.text,
-                    'class': classController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  });
-                }
-              });
-              Navigator.pop(context);
-            },
-            child: Text(user == null ? 'Add' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Student'),
-        content: const Text('Are you sure you want to delete this student?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                students.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Teachers Tab
 class TeachersTab extends StatefulWidget {
   const TeachersTab({super.key});
 
@@ -992,13 +776,13 @@ class _TeachersTabState extends State<TeachersTab> {
       'name': 'Dr. Robert Brown',
       'subject': 'Mathematics',
       'email': 'robert@example.com',
-      'phone': '1231231234'
+      'phone': '1231231234',
     },
     {
       'name': 'Ms. Emily Davis',
       'subject': 'Science',
       'email': 'emily@example.com',
-      'phone': '4564564567'
+      'phone': '4564564567',
     },
   ];
 
@@ -1016,7 +800,8 @@ class _TeachersTabState extends State<TeachersTab> {
                     hintText: 'Search teachers...',
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -1040,29 +825,40 @@ class _TeachersTabState extends State<TeachersTab> {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.green,
-                    child: Text(teacher['name'][0],
-                        style: const TextStyle(color: Colors.white)),
+                    child: Text(
+                      teacher['name'][0],
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
-                  title: Text(teacher['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    teacher['name'],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(teacher['subject']),
-                      Text(teacher['email'],
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      Text(
+                        teacher['email'],
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                     ],
                   ),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
                     ],
                     onSelected: (value) {
                       if (value == 'edit') {
-                        _showAddEditDialog(context,
-                            teacher: teacher, index: index);
+                        _showAddEditDialog(
+                          context,
+                          teacher: teacher,
+                          index: index,
+                        );
                       } else if (value == 'delete') {
                         _showDeleteDialog(context, index);
                       }
@@ -1077,13 +873,21 @@ class _TeachersTabState extends State<TeachersTab> {
     );
   }
 
-  void _showAddEditDialog(BuildContext context,
-      {Map<String, dynamic>? teacher, int? index}) {
+  void _showAddEditDialog(
+    BuildContext context, {
+    Map<String, dynamic>? teacher,
+    int? index,
+  }) {
     final nameController = TextEditingController(text: teacher?['name'] ?? '');
-    final subjectController =
-        TextEditingController(text: teacher?['subject'] ?? '');
-    final emailController = TextEditingController(text: teacher?['email'] ?? '');
-    final phoneController = TextEditingController(text: teacher?['phone'] ?? '');
+    final subjectController = TextEditingController(
+      text: teacher?['subject'] ?? '',
+    );
+    final emailController = TextEditingController(
+      text: teacher?['email'] ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: teacher?['phone'] ?? '',
+    );
 
     showDialog(
       context: context,
@@ -1096,25 +900,33 @@ class _TeachersTabState extends State<TeachersTab> {
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
-                    labelText: 'Name', border: OutlineInputBorder()),
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 15),
               TextField(
                 controller: subjectController,
                 decoration: const InputDecoration(
-                    labelText: 'Subject', border: OutlineInputBorder()),
+                  labelText: 'Subject',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 15),
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
-                    labelText: 'Email', border: OutlineInputBorder()),
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 15),
               TextField(
                 controller: phoneController,
                 decoration: const InputDecoration(
-                    labelText: 'Phone', border: OutlineInputBorder()),
+                  labelText: 'Phone',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ],
           ),
@@ -1130,23 +942,6 @@ class _TeachersTabState extends State<TeachersTab> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              setState(() {
-                if (index != null) {
-                  teachers[index] = {
-                    'name': nameController.text,
-                    'subject': subjectController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  };
-                } else {
-                  teachers.add({
-                    'name': nameController.text,
-                    'subject': subjectController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  });
-                }
-              });
               Navigator.pop(context);
             },
             child: Text(teacher == null ? 'Add' : 'Save'),
@@ -1172,211 +967,6 @@ class _TeachersTabState extends State<TeachersTab> {
             onPressed: () {
               setState(() {
                 teachers.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Parents Tab
-class ParentsTab extends StatefulWidget {
-  const ParentsTab({super.key});
-
-  @override
-  State<ParentsTab> createState() => _ParentsTabState();
-}
-
-class _ParentsTabState extends State<ParentsTab> {
-  List<Map<String, dynamic>> parents = [
-    {
-      'name': 'Mr. David Wilson',
-      'student': 'John Doe',
-      'email': 'david@example.com',
-      'phone': '7897897890'
-    },
-    {
-      'name': 'Mrs. Lisa Brown',
-      'student': 'Sarah Smith',
-      'email': 'lisa@example.com',
-      'phone': '3213213210'
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search parents...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FloatingActionButton(
-                backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-                onPressed: () => _showAddEditDialog(context),
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: parents.length,
-            itemBuilder: (context, index) {
-              final parent = parents[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.orange,
-                    child: Text(parent['name'][0],
-                        style: const TextStyle(color: Colors.white)),
-                  ),
-                  title: Text(parent['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Student: ${parent['student']}'),
-                      Text(parent['email'],
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
-                  ),
-                  trailing: PopupMenuButton(
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showAddEditDialog(context,
-                            parent: parent, index: index);
-                      } else if (value == 'delete') {
-                        _showDeleteDialog(context, index);
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddEditDialog(BuildContext context,
-      {Map<String, dynamic>? parent, int? index}) {
-    final nameController = TextEditingController(text: parent?['name'] ?? '');
-    final studentController =
-        TextEditingController(text: parent?['student'] ?? '');
-    final emailController = TextEditingController(text: parent?['email'] ?? '');
-    final phoneController = TextEditingController(text: parent?['phone'] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(parent == null ? 'Add Parent' : 'Edit Parent'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Name', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: studentController,
-                decoration: const InputDecoration(
-                    labelText: 'Student Name', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                    labelText: 'Email', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                    labelText: 'Phone', border: OutlineInputBorder()),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                if (index != null) {
-                  parents[index] = {
-                    'name': nameController.text,
-                    'student': studentController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  };
-                } else {
-                  parents.add({
-                    'name': nameController.text,
-                    'student': studentController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                  });
-                }
-              });
-              Navigator.pop(context);
-            },
-            child: Text(parent == null ? 'Add' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Parent'),
-        content: const Text('Are you sure you want to delete this parent?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                parents.removeAt(index);
               });
               Navigator.pop(context);
             },
