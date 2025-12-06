@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:studyzee/teacher/assignment/assignment_screen.dart';
 import 'package:studyzee/teacher/attendace/attendance_screen.dart';
 import 'package:studyzee/teacher/notes/notes_screen.dart';
+import 'package:studyzee/teacher/profile/teacher_profile_screen.dart';
+import 'package:studyzee/teacher/students_parent/manage_form.dart';
 import 'package:studyzee/teacher/trclass/trclass_screen.dart';
 import 'package:studyzee/teacher/trexam/trexam_screen.dart';
 import 'package:studyzee/teacher/trprogress/trprogress_screen.dart';
@@ -15,13 +17,20 @@ class TrHomeScreen extends StatefulWidget {
 }
 
 class _TrHomeScreenState extends State<TrHomeScreen> {
+  final ProfileService _profileService = ProfileService();
   int _currentIndex = 0;
+  @override
+  void initState() {
+    _profileService.getTeacherProfile();
+    // TODO: implement initState
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      body: _currentIndex == 0 ? _buildHomeContent() : _buildProfileContent(),
+      body: _currentIndex == 0 ? _buildHomeContent() : TeacherProfileScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -148,10 +157,10 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 20),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Welcome',
                           style: TextStyle(
                             fontSize: 20,
@@ -159,10 +168,10 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                             color: Colors.black87,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'John Doe',
-                          style: TextStyle(
+                          _profileService.currentUser?.displayName ?? 'Teacher',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w400,
                             color: Colors.black54,
@@ -185,6 +194,14 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 mainAxisSpacing: 20,
                 childAspectRatio: .9,
                 children: [
+                  _buildFeatureCard('Add Students In Class', Icons.add, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StudentManagementScreen(),
+                      ),
+                    );
+                  }),
                   _buildFeatureCard('Upload Notes', Icons.upload_file, () {
                     Navigator.push(
                       context,
@@ -215,16 +232,24 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                       MaterialPageRoute(builder: (context) => TrexamScreen()),
                     );
                   }),
-                  _buildFeatureCard('Assignment', Icons.assignment_turned_in, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AssignmentScreen()),
-                    );
-                  }),
+                  _buildFeatureCard(
+                    'Assignment',
+                    Icons.assignment_turned_in,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AssignmentScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   _buildFeatureCard('Progress', Icons.trending_up, () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => TrprogressScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => TrprogressScreen(),
+                      ),
                     );
                   }),
                   _buildFeatureCard('Timetable', Icons.schedule, () {
@@ -286,7 +311,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                           onTap: () {
                             // Handle profile picture change
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Change profile picture')),
+                              const SnackBar(
+                                content: Text('Change profile picture'),
+                              ),
                             );
                           },
                           child: Container(
@@ -323,10 +350,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                   const SizedBox(height: 4),
                   const Text(
                     'Senior Teacher',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                 ],
               ),
@@ -349,14 +373,22 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 _buildProfileItem(Icons.email, 'Email', 'john.doe@school.com'),
                 _buildProfileItem(Icons.phone, 'Phone', '+91 98765 43210'),
                 _buildProfileItem(Icons.cake, 'Date of Birth', '15 Jan 1985'),
-                _buildProfileItem(Icons.location_on, 'Address', 'Kasaragod, Kerala'),
+                _buildProfileItem(
+                  Icons.location_on,
+                  'Address',
+                  'Kasaragod, Kerala',
+                ),
               ]),
               const SizedBox(height: 20),
               _buildProfileSection('Professional Details', [
                 _buildProfileItem(Icons.school, 'Subject', 'Mathematics'),
                 _buildProfileItem(Icons.work, 'Experience', '12 Years'),
                 _buildProfileItem(Icons.badge, 'Employee ID', 'TCH2024001'),
-                _buildProfileItem(Icons.card_membership, 'Qualification', 'M.Ed, B.Sc'),
+                _buildProfileItem(
+                  Icons.card_membership,
+                  'Qualification',
+                  'M.Ed, B.Sc',
+                ),
               ]),
               const SizedBox(height: 20),
               _buildProfileSection('Account Settings', [
@@ -376,14 +408,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                     );
                   },
                 ),
-                _buildProfileActionItem(
-                  Icons.logout,
-                  'Logout',
-                  () {
-                    _showLogoutDialog(context);
-                  },
-                  isDestructive: true,
-                ),
+                _buildProfileActionItem(Icons.logout, 'Logout', () {
+                  _showLogoutDialog(context);
+                }, isDestructive: true),
               ]),
             ]),
           ),
@@ -416,11 +443,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 color: const Color(0xFF4285F4).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 40,
-                color: const Color(0xFF4285F4),
-              ),
+              child: Icon(icon, size: 40, color: const Color(0xFF4285F4)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -565,19 +588,14 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade200),
-                ),
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Notifications',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   TextButton(
                     onPressed: () {
@@ -682,8 +700,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                         title,
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight:
-                              isUnread ? FontWeight.bold : FontWeight.w600,
+                          fontWeight: isUnread
+                              ? FontWeight.bold
+                              : FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
@@ -702,18 +721,12 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),

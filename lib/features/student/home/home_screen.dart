@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/features/student/attendance/attendance_screen.dart';
 import 'package:studyzee/features/student/class/class_screen.dart';
 import 'package:studyzee/features/student/exam/exam_screen.dart';
@@ -24,10 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const ProfilePage(),
-  ];
+  final List<Widget> _pages = [const HomePage(), const ProfilePage()];
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',
@@ -69,8 +65,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _nameController = TextEditingController(text: 'Shabnam');
   final _emailController = TextEditingController(text: 'shabnam@example.com');
   final _phoneController = TextEditingController(text: '+91 98765 43210');
-  final _parentContactController = TextEditingController(text: '+91 98765 12345');
-  final _addressController = TextEditingController(text: '123 Main Street, City');
+  final _parentContactController = TextEditingController(
+    text: '+91 98765 12345',
+  );
+  final _addressController = TextEditingController(
+    text: '123 Main Street, City',
+  );
 
   @override
   void dispose() {
@@ -95,7 +95,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         title: const Text(
           'Edit Profile',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
       ),
@@ -112,9 +116,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF60a5fa), width: 3),
+                      border: Border.all(
+                        color: const Color(0xFF60a5fa),
+                        width: 3,
+                      ),
                     ),
-                    child: const Icon(Icons.person, size: 50, color: Color(0xFF60a5fa)),
+                    child: const Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Color(0xFF60a5fa),
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -127,7 +138,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -138,7 +153,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'Name',
-                prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF60a5fa)),
+                prefixIcon: const Icon(
+                  Icons.person_outline,
+                  color: Color(0xFF60a5fa),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -147,7 +165,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF60a5fa), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF60a5fa),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -157,7 +178,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: 'Email',
-                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF60a5fa)),
+                prefixIcon: const Icon(
+                  Icons.email_outlined,
+                  color: Color(0xFF60a5fa),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -166,7 +190,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF60a5fa), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF60a5fa),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -176,7 +203,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 labelText: 'Phone',
-                prefixIcon: const Icon(Icons.phone_outlined, color: Color(0xFF60a5fa)),
+                prefixIcon: const Icon(
+                  Icons.phone_outlined,
+                  color: Color(0xFF60a5fa),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -185,7 +215,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF60a5fa), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF60a5fa),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -195,7 +228,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 labelText: 'Parent Contact',
-                prefixIcon: const Icon(Icons.contact_phone_outlined, color: Color(0xFF60a5fa)),
+                prefixIcon: const Icon(
+                  Icons.contact_phone_outlined,
+                  color: Color(0xFF60a5fa),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -204,7 +240,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF60a5fa), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF60a5fa),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -214,7 +253,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               maxLines: 3,
               decoration: InputDecoration(
                 labelText: 'Address',
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF60a5fa)),
+                prefixIcon: const Icon(
+                  Icons.location_on_outlined,
+                  color: Color(0xFF60a5fa),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -223,7 +265,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF60a5fa), width: 2),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF60a5fa),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -238,11 +283,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF60a5fa),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text(
                   'Save Changes',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -320,7 +371,11 @@ class NotificationsPage extends StatelessWidget {
         ),
         title: const Text(
           'Notifications',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -328,7 +383,10 @@ class NotificationsPage extends StatelessWidget {
             onPressed: () {
               print('Mark all as read');
             },
-            child: const Text('Mark all read', style: TextStyle(color: Colors.white, fontSize: 14)),
+            child: const Text(
+              'Mark all read',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -410,13 +468,19 @@ class NotificationsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            Text(message, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+            Text(
+              message,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
                 const SizedBox(width: 4),
-                Text(time, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                Text(
+                  time,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
               ],
             ),
           ],
@@ -438,7 +502,11 @@ class HomePage extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'STUDYZEE',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -447,7 +515,9 @@ class HomePage extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NotificationsPage()),
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsPage(),
+                ),
               );
             },
           ),
@@ -475,7 +545,11 @@ class HomePage extends StatelessWidget {
                         color: const Color(0xFF93c5fd),
                         borderRadius: BorderRadius.circular(30),
                       ),
-                      child: const Icon(Icons.person, color: Colors.white, size: 30),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     const Expanded(
@@ -493,7 +567,10 @@ class HomePage extends StatelessWidget {
                           SizedBox(height: 4),
                           Text(
                             'Student ID: STU001',
-                            style: TextStyle(fontSize: 14, color: Color(0xFF1e3a8a)),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF1e3a8a),
+                            ),
                           ),
                         ],
                       ),
@@ -509,30 +586,110 @@ class HomePage extends StatelessWidget {
                 mainAxisSpacing: 15,
                 childAspectRatio: .9,
                 children: [
-                  _buildFeatureCard(context, 'Attendance', Icons.access_time, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => AttendanceScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Upload', Icons.cloud_upload, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => UploadScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Class', Icons.videocam, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ClassScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Fees', Icons.school, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => FeesScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Progress', Icons.trending_up, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ProgressScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Time Table', Icons.calendar_today, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => TimetableScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Exam', Icons.quiz, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ExamScreen()));
-                  }),
-                  _buildFeatureCard(context, 'Study Material', Icons.library_books, const Color(0xFF60a5fa), () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => StudyMaterialScreen()));
-                  }),
+                  _buildFeatureCard(
+                    context,
+                    'Attendance',
+                    Icons.access_time,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AttendanceScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Upload',
+                    Icons.cloud_upload,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => UploadScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Class',
+                    Icons.videocam,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ClassScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Fees',
+                    Icons.school,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => FeesScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Progress',
+                    Icons.trending_up,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgressScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Time Table',
+                    Icons.calendar_today,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TimetableScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Exam',
+                    Icons.quiz,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ExamScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Study Material',
+                    Icons.library_books,
+                    const Color(0xFF60a5fa),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StudyMaterialScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -581,7 +738,11 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -599,10 +760,15 @@ class ProfilePage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Logout',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1e3a8a)),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1e3a8a),
+            ),
           ),
           content: const Text(
             'Are you sure you want to logout?',
@@ -617,8 +783,13 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
                 // Add logout logic here
                 // For example: Navigate to login screen
                 // Navigator.pushReplacementNamed(context, '/login');
@@ -631,9 +802,14 @@ class ProfilePage extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Logout', style: TextStyle(fontSize: 16, color: Colors.white)),
+              child: const Text(
+                'Logout',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
             ),
           ],
         );
@@ -650,7 +826,11 @@ class ProfilePage extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'Profile',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -659,7 +839,9 @@ class ProfilePage extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                MaterialPageRoute(
+                  builder: (context) => const EditProfilePage(),
+                ),
               );
             },
           ),
@@ -688,12 +870,20 @@ class ProfilePage extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 4),
                     ),
-                    child: const Icon(Icons.person, size: 50, color: Color(0xFF60a5fa)),
+                    child: const Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Color(0xFF60a5fa),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'Shabnam',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -724,11 +914,17 @@ class ProfilePage extends StatelessWidget {
                       icon: const Icon(Icons.logout, color: Colors.white),
                       label: const Text(
                         'Logout',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFEF4444),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -761,12 +957,20 @@ class ProfilePage extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1e3a8a)),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1e3a8a),
+              ),
               textAlign: TextAlign.right,
             ),
           ),

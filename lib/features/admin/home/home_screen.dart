@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:studyzee/features/admin/home/time_table_manage.dart';
+import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/features/student/timetable/timetable_screen.dart';
 
 import '../../../utils/helper/helper_snackbar.dart';
@@ -176,9 +177,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
               _performLogout(context);
             },
             child: const Text('Logout'),
@@ -198,8 +205,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 }
-
-
 
 // -----------------------------------------------------------------------------
 // PAYMENTS SCREEN (Keep existing)

@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/features/student/attendance/attendance_screen.dart';
 import 'package:studyzee/features/student/fees/fees_screen.dart';
 import 'package:studyzee/features/student/progress/progress_screen.dart';
@@ -326,21 +328,21 @@ class _Home1ScreenState extends State<Home1Screen> {
         'message': 'Mathematics homework due on Oct 15',
         'icon': Icons.assignment,
         'color': Colors.blue,
-        'time': '2 hours ago'
+        'time': '2 hours ago',
       },
       {
         'title': 'Exam Schedule',
         'message': 'Science exam scheduled for Oct 20',
         'icon': Icons.event,
         'color': Colors.orange,
-        'time': '5 hours ago'
+        'time': '5 hours ago',
       },
       {
         'title': 'Payment Reminder',
         'message': 'School fees due by Oct 31',
         'icon': Icons.payment,
         'color': Colors.red,
-        'time': '1 day ago'
+        'time': '1 day ago',
       },
     ];
 
@@ -369,10 +371,7 @@ class _Home1ScreenState extends State<Home1Screen> {
                 children: [
                   const Text(
                     'Notifications',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -394,12 +393,12 @@ class _Home1ScreenState extends State<Home1Screen> {
                     ),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: (notification['color'] as Color)
-                          .withOpacity(0.1),
+                      color: (notification['color'] as Color).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: (notification['color'] as Color)
-                            .withOpacity(0.3),
+                        color: (notification['color'] as Color).withOpacity(
+                          0.3,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -646,29 +645,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
 // ---
 // Profile Screen
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   // Function to simulate logout and navigate to a "Login" or "Initial" screen.
   // In this context, we use `pushAndRemoveUntil` to go back to the Home1Screen,
   // treating it as a fresh start or login page for demonstration.
-  void _logout(BuildContext context) {
+  void _logout(BuildContext context) async {
     // In a real app, this is where you'd clear user session/authentication state (e.g., SharedPreferences, Firebase auth logout).
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        // Replace Home1Screen with your actual LoginScreen/InitialScreen
-        builder: (context) => const Home1Screen(), 
-      ),
-      (Route<dynamic> route) => false, // Remove all previous routes from stack
-    );
-    // Optionally show a message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Logged out successfully'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    await FirebaseAuth.instance.signOut();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+      // Optionally show a message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logged out successfully'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -830,10 +834,7 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       child: ListTile(
-        leading: const Icon(
-          Icons.logout,
-          color: Colors.red,
-        ),
+        leading: const Icon(Icons.logout, color: Colors.red),
         title: const Text(
           'Logout',
           style: TextStyle(
@@ -842,7 +843,11 @@ class ProfileScreen extends StatelessWidget {
             color: Colors.red,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.red,
+        ),
         onTap: () => _logout(context),
       ),
     );
