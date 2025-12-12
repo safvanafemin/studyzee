@@ -9,7 +9,7 @@ class TrAttendanceScreen extends StatefulWidget {
 
 class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
   String selectedClass = 'Math 101';
-  
+
   final List<String> classes = [
     'Math 101',
     'Physics 101',
@@ -34,13 +34,11 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
   void _submitAttendance() {
     int presentCount = students.where((s) => s.isPresent).length;
     int totalCount = students.length;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Attendance Submitted',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -86,7 +84,7 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Teacher Info Card
               Container(
                 padding: const EdgeInsets.all(16),
@@ -146,7 +144,7 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Select Class Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -167,9 +165,7 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.grey[300]!,
-                      ),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
                     child: DropdownButton<String>(
                       value: selectedClass,
@@ -199,7 +195,7 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              
+
               // Student List
               Expanded(
                 child: ListView.builder(
@@ -215,7 +211,7 @@ class _TrAttendanceScreenState extends State<TrAttendanceScreen> {
                   },
                 ),
               ),
-              
+
               // Submit Button
               SizedBox(
                 width: double.infinity,
@@ -253,11 +249,7 @@ class Student {
   final String rollNo;
   bool isPresent;
 
-  Student({
-    required this.name,
-    required this.rollNo,
-    required this.isPresent,
-  });
+  Student({required this.name, required this.rollNo, required this.isPresent});
 }
 
 // Student Attendance Card Widget
@@ -313,16 +305,12 @@ class StudentAttendanceCard extends StatelessWidget {
                       ),
                     ),
                     child: student.isPresent
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 18,
-                          )
+                        ? const Icon(Icons.check, color: Colors.white, size: 18)
                         : null,
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Student Info
                 Expanded(
                   child: Column(
@@ -339,10 +327,7 @@ class StudentAttendanceCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Roll No. ${student.rollNo}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),

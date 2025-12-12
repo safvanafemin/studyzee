@@ -807,7 +807,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
 class ProfileService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CloudneryUploader _cloudinaryUploader = CloudneryUploader();
+  final CloudinaryUploader _cloudinaryUploader = CloudinaryUploader();
   final ImagePicker _imagePicker = ImagePicker();
 
   // Get current user
