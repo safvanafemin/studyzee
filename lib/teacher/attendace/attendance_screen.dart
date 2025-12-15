@@ -148,17 +148,53 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
         if (studentsAttendance != null) {
           setState(() {
             for (var student in _students) {
-              final status = studentsAttendance[student.id] as String?;
-              if (status != null) {
-                _attendanceStatus[student.id] = status;
-                _isSelected[student.id] = status == 'Present';
+              final studentId = student.id;
+              // Check if this student has attendance data
+              if (studentsAttendance.containsKey(studentId)) {
+                final studentAttendanceData =
+                    studentsAttendance[studentId] as Map<String, dynamic>?;
+                if (studentAttendanceData != null) {
+                  final status = studentAttendanceData['status'] as String?;
+                  if (status != null) {
+                    _attendanceStatus[studentId] = status;
+                    // Set checkbox: checked only if Present
+                    _isSelected[studentId] = status == 'Present';
+                  }
+                }
+              } else {
+                // Student not in attendance record, set default
+                _attendanceStatus[studentId] = 'Present';
+                _isSelected[studentId] = true;
               }
             }
           });
+        } else {
+          // No students data in record, set defaults
+          setState(() {
+            for (var student in _students) {
+              _attendanceStatus[student.id] = 'Present';
+              _isSelected[student.id] = true;
+            }
+          });
         }
+      } else {
+        // No attendance record exists for this date, set defaults
+        setState(() {
+          for (var student in _students) {
+            _attendanceStatus[student.id] = 'Present';
+            _isSelected[student.id] = true;
+          }
+        });
       }
     } catch (e) {
       print('Error loading attendance: $e');
+      // Set defaults on error
+      setState(() {
+        for (var student in _students) {
+          _attendanceStatus[student.id] = 'Present';
+          _isSelected[student.id] = true;
+        }
+      });
     }
   }
 
@@ -511,7 +547,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                   onChanged: (value) {
                     setState(() {
                       _isSelected[studentId] = value ?? false;
-                      _attendanceStatus[studentId] = value ?? false
+                      _attendanceStatus[studentId] = (value ?? false)
                           ? 'Present'
                           : 'Absent';
                     });
