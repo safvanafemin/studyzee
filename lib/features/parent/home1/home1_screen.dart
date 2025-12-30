@@ -196,7 +196,7 @@ class _Home1ScreenState extends State<Home1Screen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AttendanceScreen(),
+                          builder: (context) => StudentAttendanceScreen(),
                         ),
                       );
                     },
@@ -209,7 +209,9 @@ class _Home1ScreenState extends State<Home1Screen> {
                     () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => FeesScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => StudentFeePaymentScreen(),
+                        ),
                       );
                     },
                   ),

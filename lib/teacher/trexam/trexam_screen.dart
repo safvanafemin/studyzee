@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:studyzee/teacher/trexam/upload_mcq_question.dart';
 
 class TrexamScreen extends StatefulWidget {
   const TrexamScreen({super.key});
 
   @override
-  State<TrexamScreen> createState() => _TeacherExamScreenState();
+  State<TrexamScreen> createState() => _TrexamScreenState();
 }
 
-class _TeacherExamScreenState extends State<TrexamScreen>
+class _TrexamScreenState extends State<TrexamScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -27,39 +32,37 @@ class _TeacherExamScreenState extends State<TrexamScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.blue.shade600,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Exams Management',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.black),
+            icon: const Icon(Icons.add, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const CreateExamScreen(),
+                  builder: (context) => const CreateExamWithQuestionsScreen(),
                 ),
-              );
+              ).then((_) => setState(() {}));
             },
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.blue.shade600,
-          labelColor: Colors.blue.shade600,
-          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'Upcoming'),
             Tab(text: 'Completed'),
@@ -68,71 +71,52 @@ class _TeacherExamScreenState extends State<TrexamScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          // Upcoming Exams Tab
-          _buildUpcomingExamsTab(),
-          // Completed Exams Tab
-          _buildCompletedExamsTab(),
-        ],
+        children: [_buildUpcomingExamsTab(), _buildCompletedExamsTab()],
       ),
     );
   }
 
   Widget _buildUpcomingExamsTab() {
-    final upcomingExams = [
-      {
-        'title': 'Science Quiz - Chapter 1',
-        'subject': 'Science',
-        'class': 'Class 10 - A',
-        'date': 'May 10, 2024, 10:00 AM',
-        'duration': '30 mins',
-        'totalQuestions': 20,
-        'students': 45,
-      },
-      {
-        'title': 'Math Test - Chapter 2',
-        'subject': 'Mathematics',
-        'class': 'Class 10 - B',
-        'date': 'May 12, 2024, 02:00 PM',
-        'duration': '60 mins',
-        'totalQuestions': 30,
-        'students': 42,
-      },
-      {
-        'title': 'English Literature',
-        'subject': 'English',
-        'class': 'Class 9 - A',
-        'date': 'May 15, 2024, 03:30 PM',
-        'duration': '45 mins',
-        'totalQuestions': 25,
-        'students': 38,
-      },
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('exams')
+          .where('teacherId', isEqualTo: _auth.currentUser?.uid)
+          .where('status', isEqualTo: 'upcoming')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: upcomingExams.length,
-      itemBuilder: (context, index) {
-        final exam = upcomingExams[index];
-        return _buildExamCard(
-          context: context,
-          title: exam['title'] as String,
-          subject: exam['subject'] as String,
-          className: exam['class'] as String,
-          date: exam['date'] as String,
-          duration: exam['duration'] as String,
-          questions: exam['totalQuestions'] as int,
-          students: exam['students'] as int,
-          isUpcoming: true,
-          onEdit: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Edit exam functionality')),
-            );
-          },
-          onDelete: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Exam deleted')),
-            );
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.quiz_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No upcoming exams',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final exams = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: exams.length,
+          itemBuilder: (context, index) {
+            final exam = exams[index].data() as Map<String, dynamic>;
+            exam['id'] = exams[index].id;
+            return _buildExamCard(exam, true);
           },
         );
       },
@@ -140,533 +124,212 @@ class _TeacherExamScreenState extends State<TrexamScreen>
   }
 
   Widget _buildCompletedExamsTab() {
-    final completedExams = [
-      {
-        'title': 'History Test',
-        'subject': 'History',
-        'class': 'Class 10 - A',
-        'date': 'Apr 28, 2024',
-        'duration': '45 mins',
-        'totalQuestions': 20,
-        'students': 45,
-        'avgScore': 78.5,
-        'submitted': 43,
-      },
-      {
-        'title': 'Biology Quiz',
-        'subject': 'Biology',
-        'class': 'Class 9 - B',
-        'date': 'Apr 25, 2024',
-        'duration': '30 mins',
-        'totalQuestions': 15,
-        'students': 40,
-        'avgScore': 82.3,
-        'submitted': 40,
-      },
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('exams')
+          .where('teacherId', isEqualTo: _auth.currentUser?.uid)
+          .where('status', isEqualTo: 'completed')
+          // .orderBy('scheduledAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: completedExams.length,
-      itemBuilder: (context, index) {
-        final exam = completedExams[index];
-        return _buildCompletedExamCard(
-          context: context,
-          title: exam['title'] as String,
-          subject: exam['subject'] as String,
-          className: exam['class'] as String,
-          date: exam['date'] as String,
-          avgScore: exam['avgScore'] as double,
-          submitted: exam['submitted'] as int,
-          total: exam['students'] as int,
-          onViewResults: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ExamResultsPage(examTitle: exam['title'] as String),
-              ),
-            );
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No completed exams',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final exams = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: exams.length,
+          itemBuilder: (context, index) {
+            final exam = exams[index].data() as Map<String, dynamic>;
+            exam['id'] = exams[index].id;
+            return _buildExamCard(exam, false);
           },
         );
       },
     );
   }
 
-  Widget _buildExamCard({
-    required BuildContext context,
-    required String title,
-    required String subject,
-    required String className,
-    required String date,
-    required String duration,
-    required int questions,
-    required int students,
-    required bool isUpcoming,
-    required VoidCallback onEdit,
-    required VoidCallback onDelete,
-  }) {
+  Widget _buildExamCard(Map<String, dynamic> exam, bool isUpcoming) {
+    final scheduledAt = (exam['scheduledAt'] as Timestamp?)?.toDate();
+    final dateStr = scheduledAt != null
+        ? DateFormat('MMM d, yyyy hh:mm a').format(scheduledAt)
+        : 'Date not set';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$className • $subject',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
+      elevation: 2,
+      child: InkWell(
+        onTap: () {
+          if (!isUpcoming) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ExamResultsScreen(
+                  examId: exam['id'],
+                  examTitle: exam['title'] ?? 'Exam',
                 ),
-                PopupMenuButton(
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      child: const Row(
-                        children: [
-                          Icon(Icons.edit, size: 18),
-                          SizedBox(width: 12),
-                          Text('Edit'),
-                        ],
-                      ),
-                      onTap: onEdit,
-                    ),
-                    PopupMenuItem(
-                      child: const Row(
-                        children: [
-                          Icon(Icons.delete, size: 18, color: Colors.red),
-                          SizedBox(width: 12),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                      onTap: onDelete,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.calendar_today,
-                    size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  date,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.schedule,
-                    size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  duration,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '$questions Questions',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade600,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '$students Students',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompletedExamCard({
-    required BuildContext context,
-    required String title,
-    required String subject,
-    required String className,
-    required String date,
-    required double avgScore,
-    required int submitted,
-    required int total,
-    required VoidCallback onViewResults,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$className • $subject',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle,
-                          size: 16, color: Colors.green.shade600),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Completed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.calendar_today,
-                    size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  date,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Average Score',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${avgScore.toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Submissions',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$submitted/$total',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: onViewResults,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Results'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Create Exam Screen
-class CreateExamScreen extends StatefulWidget {
-  const CreateExamScreen({super.key});
-
-  @override
-  State<CreateExamScreen> createState() => _CreateExamScreenState();
-}
-
-class _CreateExamScreenState extends State<CreateExamScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _subjectController = TextEditingController();
-  final _classController = TextEditingController();
-  final _questionsController = TextEditingController();
-  final _durationController = TextEditingController();
-  DateTime? _selectedDate;
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _subjectController.dispose();
-    _classController.dispose();
-    _questionsController.dispose();
-    _durationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _selectDateTime(BuildContext context) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-
-    if (date != null) {
-      if (mounted) {
-        final time = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.now(),
-        );
-
-        if (time != null) {
-          setState(() {
-            _selectedDate = DateTime(
-              date.year,
-              date.month,
-              date.day,
-              time.hour,
-              time.minute,
+              ),
             );
-          });
-        }
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Create Exam',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
+          } else {
+            _showExamDetails(exam);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField(
-                'Exam Title',
-                _titleController,
-                Icons.title,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Subject',
-                _subjectController,
-                Icons.subject,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Class/Section',
-                _classController,
-                Icons.class_,
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_today,
-                        color: Colors.grey.shade600, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _selectDateTime(context),
-                        child: Text(
-                          _selectedDate == null
-                              ? 'Select Date & Time'
-                              : DateFormat('MMM d, yyyy hh:mm a')
-                                  .format(_selectedDate!),
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: _selectedDate == null
-                                ? Colors.grey
-                                : Colors.black87,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exam['title'] ?? 'Untitled Exam',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${exam['className'] ?? ''} • ${exam['subject'] ?? ''}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isUpcoming)
+                    PopupMenuButton(
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          onTap: () => _deleteExam(exam['id']),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, size: 18, color: Colors.red),
+                              SizedBox(width: 12),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          onTap: () => _markAsCompleted(exam['id']),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.check_circle, size: 18),
+                              SizedBox(width: 12),
+                              Text('Mark as Completed'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      dateStr,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.schedule, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${exam['duration'] ?? 0} minutes',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${exam['totalQuestions'] ?? 0} Questions',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade600,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Total Questions',
-                _questionsController,
-                Icons.quiz,
-                inputType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Duration (minutes)',
-                _durationController,
-                Icons.schedule,
-                inputType: TextInputType.number,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Exam created successfully!'),
+                  ),
+                  const Spacer(),
+                  if (!isUpcoming)
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ExamResultsScreen(
+                              examId: exam['id'],
+                              examTitle: exam['title'] ?? 'Exam',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.analytics, size: 16),
+                      label: const Text('View Results'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
-                    );
-                    Navigator.pop(context);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Create Exam',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -675,66 +338,155 @@ class _CreateExamScreenState extends State<CreateExamScreen> {
     );
   }
 
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    TextInputType inputType = TextInputType.text,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey.shade600, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              keyboardType: inputType,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: label,
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '$label is required';
-                }
-                return null;
-              },
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+  void _showExamDetails(Map<String, dynamic> exam) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        exam['title'] ?? 'Exam Details',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: 12),
+                _buildDetailRow('Subject', exam['subject'] ?? 'N/A'),
+                _buildDetailRow('Class', exam['className'] ?? 'N/A'),
+                _buildDetailRow('Duration', '${exam['duration'] ?? 0} minutes'),
+                _buildDetailRow('Questions', '${exam['totalQuestions'] ?? 0}'),
+                if (exam['description'] != null &&
+                    exam['description'].isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Description:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(exam['description']),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
   }
+
+  Future<void> _deleteExam(String examId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Exam'),
+        content: const Text('Are you sure you want to delete this exam?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _firestore.collection('exams').doc(examId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Exam deleted successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting exam: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _markAsCompleted(String examId) async {
+    try {
+      await _firestore.collection('exams').doc(examId).update({
+        'status': 'completed',
+        'completedAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Exam marked as completed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating exam: $e')));
+      }
+    }
+  }
 }
 
-// Exam Results Page
-class ExamResultsPage extends StatelessWidget {
+// Exam Results Screen
+class ExamResultsScreen extends StatelessWidget {
+  final String examId;
   final String examTitle;
 
-  const ExamResultsPage({super.key, required this.examTitle});
+  const ExamResultsScreen({
+    super.key,
+    required this.examId,
+    required this.examTitle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final results = [
-      {'name': 'Aarav Sharma', 'score': 18, 'total': 20, 'percentage': 90.0},
-      {'name': 'Aisha Patel', 'score': 17, 'total': 20, 'percentage': 85.0},
-      {'name': 'Bhavna Singh', 'score': 16, 'total': 20, 'percentage': 80.0},
-      {'name': 'Chirag Kumar', 'score': 19, 'total': 20, 'percentage': 95.0},
-      {'name': 'Diya Verma', 'score': 15, 'total': 20, 'percentage': 75.0},
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -753,76 +505,158 @@ class ExamResultsPage extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade600, Colors.blue.shade400],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('exam_submissions')
+            .where('examId', isEqualTo: examId)
+            .orderBy('score', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Class Statistics',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  Text(
+                    'No submissions yet',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final submissions = snapshot.data!.docs;
+          final scores = submissions
+              .map((doc) => (doc.data() as Map<String, dynamic>)['score'] ?? 0)
+              .toList();
+
+          final avgScore = scores.isNotEmpty
+              ? scores.reduce((a, b) => a + b) / scores.length
+              : 0.0;
+          final highestScore = scores.isNotEmpty
+              ? scores.reduce((a, b) => a > b ? a : b)
+              : 0;
+          final lowestScore = scores.isNotEmpty
+              ? scores.reduce((a, b) => a < b ? a : b)
+              : 0;
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Statistics Card
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.blue.shade400],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
                     children: [
-                      _buildStatCard('Average', '85%', Icons.trending_up),
-                      _buildStatCard('Highest', '95%', Icons.emoji_events),
-                      _buildStatCard('Lowest', '75%', Icons.trending_down),
+                      const Text(
+                        'Class Statistics',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatCard(
+                            'Average',
+                            '${avgScore.toStringAsFixed(1)}%',
+                            Icons.trending_up,
+                          ),
+                          _buildStatCard(
+                            'Highest',
+                            '$highestScore%',
+                            Icons.emoji_events,
+                          ),
+                          _buildStatCard(
+                            'Lowest',
+                            '$lowestScore%',
+                            Icons.trending_down,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Total Submissions: ${submissions.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Student Results',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+
+                // Results List
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Student Results',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: submissions.length,
+                        itemBuilder: (context, index) {
+                          final submission =
+                              submissions[index].data() as Map<String, dynamic>;
+                          return _buildResultTile(
+                            context,
+                            submission,
+                            index + 1,
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      final result = results[index];
-                      return _buildResultTile(
-                        name: result['name'] as String,
-                        score: result['score'] as int,
-                        total: result['total'] as int,
-                        percentage: result['percentage'] as double,
-                      );
-                    },
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -849,22 +683,24 @@ class ExamResultsPage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.white),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResultTile({
-    required String name,
-    required int score,
-    required int total,
-    required double percentage,
-  }) {
+  Widget _buildResultTile(
+    BuildContext context,
+    Map<String, dynamic> submission,
+    int rank,
+  ) {
+    final score = submission['score'] ?? 0;
+    final totalQuestions = submission['totalQuestions'] ?? 0;
+    final percentage = totalQuestions > 0
+        ? ((score / totalQuestions) * 100).round()
+        : 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -872,35 +708,50 @@ class ExamResultsPage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$score/$total',
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: rank <= 3 ? Colors.amber.shade100 : Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '$rank',
                 style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.bold,
+                  color: rank <= 3
+                      ? Colors.amber.shade700
+                      : Colors.grey.shade700,
                 ),
               ),
-            ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  submission['studentName'] ?? 'Unknown Student',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$score/$totalQuestions correct',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+              ],
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -908,20 +759,20 @@ class ExamResultsPage extends StatelessWidget {
               color: percentage >= 80
                   ? Colors.green.shade50
                   : percentage >= 60
-                      ? Colors.orange.shade50
-                      : Colors.red.shade50,
+                  ? Colors.orange.shade50
+                  : Colors.red.shade50,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${percentage.toStringAsFixed(0)}%',
+              '$percentage%',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: percentage >= 80
                     ? Colors.green
                     : percentage >= 60
-                        ? Colors.orange
-                        : Colors.red,
+                    ? Colors.orange
+                    : Colors.red,
               ),
             ),
           ),

@@ -239,7 +239,7 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AssignmentScreen(),
+                          builder: (context) => AssignmentViewScreen(),
                         ),
                       );
                     },
@@ -255,7 +255,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                   _buildFeatureCard('Timetable', Icons.schedule, () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => Trtimetable()),
+                      MaterialPageRoute(
+                        builder: (context) => TeacherTimetableViewScreen(),
+                      ),
                     );
                   }),
                 ],

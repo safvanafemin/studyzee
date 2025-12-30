@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:studyzee/features/admin/home/fee_management_screen.dart';
+import 'package:studyzee/features/admin/home/student_payment_screen.dart';
+import 'package:studyzee/features/admin/home/teacher_manage_section.dart';
 import 'package:studyzee/features/admin/home/time_table_manage.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/features/student/timetable/timetable_screen.dart';
@@ -21,8 +24,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   final List<Widget> _screens = [
     const DashboardTab(),
-    const StudentsTab(),
-    const TeachersTab(),
+    ClassWiseStudentsScreen(),
+    AdminTeachersScreen(),
     const ClassSectionsTab(),
   ];
 
@@ -124,7 +127,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const PaymentsScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const FeeManagementScreen(),
+                ),
               );
             },
           ),
