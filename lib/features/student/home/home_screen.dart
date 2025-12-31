@@ -985,93 +985,96 @@ class HomePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ProgressScreen(),
+                          builder: (context) => const StudentProgressScreen(),
                         ),
                       );
                     },
                   ),
-                 // Replace the Timetable card section in your HomePage with this:
 
-_buildFeatureCard(
-  context,
-  'Timetable',
-  Icons.calendar_today,
-  const Color(0xFF3B82F6),
-  () async {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+                  // Replace the Timetable card section in your HomePage with this:
+                  _buildFeatureCard(
+                    context,
+                    'Timetable',
+                    Icons.calendar_today,
+                    const Color(0xFF3B82F6),
+                    () async {
+                      // Show loading indicator
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) =>
+                            const Center(child: CircularProgressIndicator()),
+                      );
 
-    try {
-      // Fetch current user's class ID
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login first'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+                      try {
+                        // Fetch current user's class ID
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) {
+                          Navigator.pop(context); // Close loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please login first'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+                        final userDoc = await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .get();
 
-      Navigator.pop(context); // Close loading dialog
+                        Navigator.pop(context); // Close loading dialog
 
-      if (!userDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User data not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+                        if (!userDoc.exists) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User data not found'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
 
-      final userData = userDoc.data() as Map<String, dynamic>;
-      final classId = userData['classId'] as String?;
+                        final userData = userDoc.data() as Map<String, dynamic>;
+                        final classId = userData['classId'] as String?;
 
-      if (classId == null || classId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No class assigned. Please contact administrator.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
+                        if (classId == null || classId.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No class assigned. Please contact administrator.',
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
 
-      // Navigate to timetable screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentTimetableViewScreen(
-            studentId: user.uid,
-            classId: classId,
-          ),
-        ),
-      );
-    } catch (e) {
-      Navigator.pop(context); // Close loading dialog if still open
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  },
-),
+                        // Navigate to timetable screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StudentTimetableViewScreen(
+                              studentId: user.uid,
+                              classId: classId,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        Navigator.pop(
+                          context,
+                        ); // Close loading dialog if still open
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                  ),
                   _buildFeatureCard(
                     context,
                     'Exams',
@@ -1095,7 +1098,7 @@ _buildFeatureCard(
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const StudyMaterialScreen(),
+                          builder: (context) => const StudentNotesScreen(),
                         ),
                       );
                     },

@@ -3,7 +3,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:studyzee/teacher/assignment/assigment_upload_scereen.dart';
+import 'package:studyzee/features/teacher/assignment/assigment_upload_scereen.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AssignmentViewScreen extends StatefulWidget {
   const AssignmentViewScreen({super.key});
@@ -138,7 +144,6 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
       final submissionsSnapshot = await _firestore
           .collection('assignment_submissions')
           .where('assignmentId', isEqualTo: assignmentId)
-          .orderBy('submittedAt', descending: true)
           .get();
 
       setState(() {
@@ -191,6 +196,137 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
     final endDate = end.toDate();
     final difference = endDate.difference(startDate).inDays;
     return '$difference days';
+  }
+
+  // Download file function
+  Future<void> _downloadFile(String url, String fileName) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Downloading...'),
+            ],
+          ),
+        ),
+      );
+
+      // Request storage permission
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.request();
+        if (!status.isGranted) {
+          Navigator.pop(context);
+          _showError('Storage permission denied');
+          return;
+        }
+      }
+
+      // Download file
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        // Get downloads directory
+        Directory? directory;
+        if (Platform.isAndroid) {
+          directory = await getExternalStorageDirectory();
+          // Navigate to the Downloads folder
+          String newPath = "";
+          List<String> paths = directory!.path.split("/");
+          for (int x = 1; x < paths.length; x++) {
+            String folder = paths[x];
+            if (folder != "Android") {
+              newPath += "/" + folder;
+            } else {
+              break;
+            }
+          }
+          newPath = newPath + "/Download";
+          directory = Directory(newPath);
+        } else {
+          directory = await getApplicationDocumentsDirectory();
+        }
+
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        final file = File('${directory.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+
+        Navigator.pop(context); // Close loading dialog
+        _showSuccess('File downloaded to ${directory.path}/$fileName');
+      } else {
+        Navigator.pop(context);
+        _showError('Failed to download file');
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      print('Error downloading file: $e');
+      _showError('Error downloading file: $e');
+    }
+  }
+
+  // Open PDF in browser
+  Future<void> _openInBrowser(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showError('Could not open URL');
+      }
+    } catch (e) {
+      print('Error opening URL: $e');
+      _showError('Error opening URL');
+    }
+  }
+
+  // View PDF in app
+  Future<void> _viewPdfInApp(String url, String fileName) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Loading PDF...'),
+            ],
+          ),
+        ),
+      );
+
+      // Download PDF to temporary directory
+      final response = await http.get(Uri.parse(url));
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(response.bodyBytes);
+
+      Navigator.pop(context); // Close loading dialog
+
+      // Open PDF viewer
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PDFViewerScreen(
+            path: file.path,
+            fileName: fileName,
+            downloadUrl: url,
+          ),
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      print('Error loading PDF: $e');
+      _showError('Error loading PDF');
+    }
   }
 
   Future<void> _updateSubmissionStatus(
@@ -299,27 +435,79 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
 
   Widget _buildFilePreviewWidget(String url, String? fileName) {
     if (fileName?.endsWith('.pdf') ?? false) {
-      return const Column(
+      return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.picture_as_pdf, size: 64, color: Colors.red),
-          SizedBox(height: 16),
-          Text('PDF Document'),
-          SizedBox(height: 8),
-          Text('Download to view', style: TextStyle(color: Colors.grey)),
+          const Icon(Icons.picture_as_pdf, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text(
+            'PDF Document',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose an option below',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _viewPdfInApp(url, fileName!);
+                },
+                icon: const Icon(Icons.visibility),
+                label: const Text('View PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => _downloadFile(url, fileName!),
+                icon: const Icon(Icons.download),
+                label: const Text('Download'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     } else if (fileName?.endsWith('.doc') ??
         fileName?.endsWith('.docx') ??
         false) {
-      return const Column(
+      return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.description, size: 64, color: Colors.blue),
-          SizedBox(height: 16),
-          Text('Word Document'),
-          SizedBox(height: 8),
-          Text('Download to view', style: TextStyle(color: Colors.grey)),
+          const Icon(Icons.description, size: 64, color: Colors.blue),
+          const SizedBox(height: 16),
+          const Text('Word Document'),
+          const SizedBox(height: 8),
+          const Text('Download to view', style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => _downloadFile(url, fileName!),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
         ],
       );
     } else if (fileName?.endsWith('.jpg') ??
@@ -347,14 +535,24 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
         ),
       );
     } else {
-      return const Column(
+      return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.insert_drive_file, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Document'),
-          SizedBox(height: 8),
-          Text('Download to view', style: TextStyle(color: Colors.grey)),
+          const Icon(Icons.insert_drive_file, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('Document'),
+          const SizedBox(height: 8),
+          const Text('Download to view', style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => _downloadFile(url, fileName!),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
         ],
       );
     }
@@ -762,7 +960,7 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
         onPressed: () {
           Navigator.push(
             context,
@@ -770,7 +968,7 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
           );
         },
       ),
-      appBar: AppBar(title: Text('Assignment')),
+      appBar: AppBar(title: const Text('Assignment')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -987,6 +1185,186 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],
+    );
+  }
+}
+
+// PDF Viewer Screen
+class PDFViewerScreen extends StatefulWidget {
+  final String path;
+  final String fileName;
+  final String downloadUrl;
+
+  const PDFViewerScreen({
+    super.key,
+    required this.path,
+    required this.fileName,
+    required this.downloadUrl,
+  });
+
+  @override
+  State<PDFViewerScreen> createState() => _PDFViewerScreenState();
+}
+
+class _PDFViewerScreenState extends State<PDFViewerScreen> {
+  int? totalPages;
+  int currentPage = 0;
+  bool isReady = false;
+
+  Future<void> _downloadFile() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Downloading...'),
+            ],
+          ),
+        ),
+      );
+
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.request();
+        if (!status.isGranted) {
+          Navigator.pop(context);
+          _showError('Storage permission denied');
+          return;
+        }
+      }
+
+      final response = await http.get(Uri.parse(widget.downloadUrl));
+
+      if (response.statusCode == 200) {
+        Directory? directory;
+        if (Platform.isAndroid) {
+          directory = await getExternalStorageDirectory();
+          String newPath = "";
+          List<String> paths = directory!.path.split("/");
+          for (int x = 1; x < paths.length; x++) {
+            String folder = paths[x];
+            if (folder != "Android") {
+              newPath += "/" + folder;
+            } else {
+              break;
+            }
+          }
+          newPath = newPath + "/Download";
+          directory = Directory(newPath);
+        } else {
+          directory = await getApplicationDocumentsDirectory();
+        }
+
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        final file = File('${directory?.path}/${widget.fileName}');
+        await file.writeAsBytes(response.bodyBytes);
+
+        Navigator.pop(context);
+        _showSuccess(
+          'File downloaded to ${directory?.path}/${widget.fileName}',
+        );
+      } else {
+        Navigator.pop(context);
+        _showError('Failed to download file');
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      _showError('Error downloading file: $e');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.fileName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _downloadFile,
+            tooltip: 'Download PDF',
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          PDFView(
+            filePath: widget.path,
+            enableSwipe: true,
+            swipeHorizontal: false,
+            autoSpacing: true,
+            pageFling: true,
+            pageSnap: true,
+            onRender: (pages) {
+              setState(() {
+                totalPages = pages;
+                isReady = true;
+              });
+            },
+            onError: (error) {
+              print('PDF Error: $error');
+            },
+            onPageError: (page, error) {
+              print('Page $page Error: $error');
+            },
+            onPageChanged: (page, total) {
+              setState(() {
+                currentPage = page ?? 0;
+              });
+            },
+          ),
+          if (!isReady) const Center(child: CircularProgressIndicator()),
+          if (isReady && totalPages != null)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Page ${currentPage + 1} of $totalPages',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

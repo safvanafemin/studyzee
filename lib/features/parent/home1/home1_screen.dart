@@ -1,14 +1,594 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
+import 'package:studyzee/features/parent/home1/fees_structure.dart';
+import 'package:studyzee/features/parent/home1/parent_attenttends_screen.dart';
+import 'package:studyzee/features/parent/home1/parent_student_screen.dart';
 import 'package:studyzee/features/student/attendance/attendance_screen.dart';
 import 'package:studyzee/features/student/fees/fees_screen.dart';
 import 'package:studyzee/features/student/progress/progress_screen.dart';
 
-// You'll need to define a separate screen for the initial login/home for a real app,
-// but for this example, we'll navigate back to Home1Screen as a stand-in for "logging out"
-// and resetting the state.
+// Parent Profile Update Screen
+class ParentProfileUpdateScreen extends StatefulWidget {
+  const ParentProfileUpdateScreen({super.key});
 
+  @override
+  State<ParentProfileUpdateScreen> createState() =>
+      _ParentProfileUpdateScreenState();
+}
+
+class _ParentProfileUpdateScreenState extends State<ParentProfileUpdateScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _formKey = GlobalKey<FormState>();
+
+  // Form Controllers
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  // Children Data
+  List<Map<String, dynamic>> _children = [];
+
+  // Loading states
+  bool _isLoading = true;
+  bool _isUpdating = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
+
+  // Current user data
+  String _userId = '';
+  String _userRole = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      _userId = user.uid;
+
+      // Load user data from Firestore
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        _userRole = userData['role'] ?? '';
+
+        setState(() {
+          _nameController.text = userData['name'] ?? '';
+          _emailController.text = userData['email'] ?? '';
+          _phoneController.text = userData['phone'] ?? '';
+        });
+
+        // If user is parent, load children data
+        if (_userRole == 'Parent') {
+          await _loadChildrenData(userData);
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      _showError('Error loading profile data');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadChildrenData(Map<String, dynamic> userData) async {
+    try {
+      final children = userData['children'] as List<dynamic>? ?? [];
+
+      for (var childId in children) {
+        final childDoc = await _firestore
+            .collection('users')
+            .doc(childId.toString())
+            .get();
+        if (childDoc.exists) {
+          final childData = childDoc.data() as Map<String, dynamic>;
+          _children.add({
+            'id': childId,
+            'name': childData['name'] ?? 'Unknown',
+            'class': childData['className'] ?? 'Unknown',
+            'rollNumber': childData['rollNumber'] ?? '',
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading children data: $e');
+    }
+  }
+
+  Future<void> _updateProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Validate password if provided
+    if (_passwordController.text.isNotEmpty) {
+      if (_passwordController.text.length < 6) {
+        _showError('Password must be at least 6 characters');
+        return;
+      }
+      if (_passwordController.text != _confirmPasswordController.text) {
+        _showError('Passwords do not match');
+        return;
+      }
+    }
+
+    setState(() => _isUpdating = true);
+
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Update email in Firebase Auth if changed
+      if (_emailController.text.trim() != user.email) {
+        await user.verifyBeforeUpdateEmail(_emailController.text.trim());
+      }
+
+      // Update password if provided
+      if (_passwordController.text.isNotEmpty) {
+        await user.updatePassword(_passwordController.text.trim());
+      }
+
+      // Update user data in Firestore
+      final updateData = {
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection('users').doc(user.uid).update(updateData);
+
+      // Update parent info in children's documents
+      if (_userRole == 'Parent' && _children.isNotEmpty) {
+        await _updateChildrenParentInfo();
+      }
+
+      _showSuccess('Profile updated successfully!');
+
+      // Clear password fields
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Error updating profile';
+      if (e.code == 'email-already-in-use') {
+        errorMessage = 'Email already in use by another account';
+      } else if (e.code == 'requires-recent-login') {
+        errorMessage = 'Please re-authenticate to update email/password';
+      } else if (e.code == 'weak-password') {
+        errorMessage = 'Password is too weak';
+      }
+      _showError(errorMessage);
+    } catch (e) {
+      _showError('Error updating profile: $e');
+    } finally {
+      setState(() => _isUpdating = false);
+    }
+  }
+
+  Future<void> _updateChildrenParentInfo() async {
+    final batch = _firestore.batch();
+
+    for (var child in _children) {
+      final childRef = _firestore.collection('users').doc(child['id']);
+      batch.update(childRef, {
+        'parentName': _nameController.text.trim(),
+        'parentEmail': _emailController.text.trim(),
+        'parentPhone': _phoneController.text.trim(),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    bool obscureText = false,
+    bool readOnly = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    Widget? suffixIcon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        readOnly: readOnly,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: const Color(0xFF7DB8C5)),
+          suffixIcon: suffixIcon,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF7DB8C5), width: 2),
+          ),
+        ),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required String label,
+    required TextEditingController controller,
+    required bool showPassword,
+    required VoidCallback onToggle,
+  }) {
+    return _buildTextField(
+      label: label,
+      controller: controller,
+      icon: Icons.lock,
+      obscureText: !showPassword,
+      suffixIcon: IconButton(
+        icon: Icon(
+          showPassword ? Icons.visibility_off : Icons.visibility,
+          color: Colors.grey.shade600,
+        ),
+        onPressed: onToggle,
+      ),
+    );
+  }
+
+  Widget _buildChildrenSection() {
+    if (_children.isEmpty || _userRole != 'Parent') {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Children Information',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF7DB8C5),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._children.map((child) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7DB8C5).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Color(0xFF7DB8C5),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            child['name'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.school,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                child['class'],
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.numbers,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Roll: ${child['rollNumber']}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+        const SizedBox(height: 8),
+        const Text(
+          'Note: When you update your information, it will automatically update in your children\'s records.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF7DB8C5),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Update Profile',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile Header
+                    Center(
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7DB8C5).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFF7DB8C5),
+                            width: 3,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Color(0xFF7DB8C5),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        _userRole,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Basic Information
+                    const Text(
+                      'Basic Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7DB8C5),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildTextField(
+                      label: 'Full Name',
+                      controller: _nameController,
+                      icon: Icons.person,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    _buildTextField(
+                      label: 'Email',
+                      controller: _emailController,
+                      icon: Icons.email,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    _buildTextField(
+                      label: 'Phone Number',
+                      controller: _phoneController,
+                      icon: Icons.phone,
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your phone number';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    // Change Password Section
+                    const SizedBox(height: 30),
+                    const Text(
+                      'Change Password',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7DB8C5),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Leave empty to keep current password',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildPasswordField(
+                      label: 'New Password',
+                      controller: _passwordController,
+                      showPassword: _showPassword,
+                      onToggle: () =>
+                          setState(() => _showPassword = !_showPassword),
+                    ),
+
+                    _buildPasswordField(
+                      label: 'Confirm New Password',
+                      controller: _confirmPasswordController,
+                      showPassword: _showConfirmPassword,
+                      onToggle: () => setState(
+                        () => _showConfirmPassword = !_showConfirmPassword,
+                      ),
+                    ),
+
+                    // Children Section
+                    _buildChildrenSection(),
+
+                    // Update Button
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _isUpdating ? null : _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF7DB8C5),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isUpdating
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Update Profile',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+// Home1Screen - Parent Main Screen
 class Home1Screen extends StatefulWidget {
   const Home1Screen({super.key});
 
@@ -18,34 +598,51 @@ class Home1Screen extends StatefulWidget {
 
 class _Home1ScreenState extends State<Home1Screen> {
   int _selectedIndex = 0;
+  Map<String, dynamic> _userData = {};
+  bool _isLoading = true;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        setState(() {
+          _userData = userDoc.data() as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
-    // Navigate to ProfileScreen when the Profile icon is tapped (index == 1)
     if (index == 1) {
-      // We push the ProfileScreen and then reset the index to 0 (Home)
-      // so when the user navigates back from Profile, the 'Home' tab remains selected.
-      // A better structure in a real app would be to use an IndexedStack for the body
-      // and only navigate for the Profile, or manage routing globally.
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ProfileScreen()),
       ).then((_) {
-        // After returning from the Profile screen, reset selected index to 0
         setState(() {
           _selectedIndex = 0;
         });
       });
     }
   }
-
-  // Sample screen for Teacher Contact (was not defined, but used in Home1Screen)
-  // For completeness, it's defined here.
-  // We'll define it after the other classes for organization.
-  // const TeacherContactScreen(),
 
   @override
   Widget build(BuildContext context) {
@@ -117,139 +714,146 @@ class _Home1ScreenState extends State<Home1Screen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
                 children: [
+                  const SizedBox(height: 20),
                   Container(
-                    width: 60,
-                    height: 60,
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF7DB8C5),
-                        width: 3,
-                      ),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Color(0xFF7DB8C5),
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          'Welcome, Sarah & Mark!',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF7DB8C5),
+                              width: 3,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF7DB8C5),
+                            size: 30,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Your children's academic hub",
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome, ${_userData['name'] ?? 'Parent'}!',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                "Your children's academic hub",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _buildFeatureCard(
+                          context,
+                          'Attendance',
+                          Icons.access_time_outlined,
+                          const Color.fromARGB(255, 96, 168, 250),
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ParentAttendanceScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildFeatureCard(
+                          context,
+                          'Payment Status',
+                          Icons.account_balance_wallet_outlined,
+                          const Color.fromARGB(255, 96, 168, 250),
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ParentFeeScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildFeatureCard(
+                          context,
+                          'Progress Graph',
+                          Icons.bar_chart_rounded,
+                          const Color.fromARGB(255, 96, 168, 250),
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ParentStudentProgressScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildFeatureCard(
+                          context,
+                          'Teacher Contact',
+                          Icons.calendar_month_outlined,
+                          const Color.fromARGB(255, 96, 168, 250),
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const TeacherContactScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildFeatureCard(
-                    context,
-                    'Attendance',
-                    Icons.access_time_outlined,
-                    const Color.fromARGB(255, 96, 168, 250),
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => StudentAttendanceScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    'Payment Status',
-                    Icons.account_balance_wallet_outlined,
-                    const Color.fromARGB(255, 96, 168, 250),
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => StudentFeePaymentScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    'Progress Graph',
-                    Icons.bar_chart_rounded,
-                    const Color.fromARGB(255, 96, 168, 250),
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProgressScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    'Teacher Contact',
-                    Icons.calendar_month_outlined,
-                    const Color.fromARGB(255, 96, 168, 250),
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TeacherContactScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: const Color.fromARGB(255, 96, 168, 250),
@@ -462,190 +1066,6 @@ class _Home1ScreenState extends State<Home1Screen> {
   }
 }
 
-// ---
-// Edit Profile Screen
-class EditProfileScreen extends StatefulWidget {
-  final Map<String, String> initialData;
-
-  const EditProfileScreen({
-    super.key,
-    this.initialData = const {
-      'name': 'Sarah & Mark',
-      'email': 'sarah.mark@example.com',
-      'phone': '+91 98765 43210',
-      'address': '123 Main Street, City',
-    },
-  });
-
-  @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
-}
-
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  late TextEditingController nameController;
-  late TextEditingController emailController;
-  late TextEditingController phoneController;
-  late TextEditingController addressController;
-
-  @override
-  void initState() {
-    super.initState();
-    nameController = TextEditingController(text: widget.initialData['name']);
-    emailController = TextEditingController(text: widget.initialData['email']);
-    phoneController = TextEditingController(text: widget.initialData['phone']);
-    addressController = TextEditingController(
-      text: widget.initialData['address'],
-    );
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    addressController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7DB8C5),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7DB8C5).withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  size: 50,
-                  color: Color(0xFF7DB8C5),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () {
-                  // Add image picker functionality here
-                },
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Change Photo'),
-              ),
-              const SizedBox(height: 30),
-              _buildTextField('Name', nameController, Icons.person),
-              _buildTextField('Email', emailController, Icons.email),
-              _buildTextField('Phone', phoneController, Icons.phone),
-              _buildTextField('Address', addressController, Icons.location_on),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profile updated successfully'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7DB8C5),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF7DB8C5),
-                    side: const BorderSide(color: Color(0xFF7DB8C5)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller,
-    IconData icon,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF7DB8C5)),
-          labelStyle: const TextStyle(color: Color(0xFF7DB8C5)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF7DB8C5), width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---
 // Profile Screen
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -655,11 +1075,64 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Function to simulate logout and navigate to a "Login" or "Initial" screen.
-  // In this context, we use `pushAndRemoveUntil` to go back to the Home1Screen,
-  // treating it as a fresh start or login page for demonstration.
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Map<String, dynamic> _userData = {};
+  List<Map<String, dynamic>> _children = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        _userData = userDoc.data() as Map<String, dynamic>;
+
+        // Load children if user is parent
+        if (_userData['role'] == 'Parent') {
+          await _loadChildrenData();
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadChildrenData() async {
+    try {
+      final children = _userData['children'] as List<dynamic>? ?? [];
+
+      for (var childId in children) {
+        final childDoc = await _firestore
+            .collection('users')
+            .doc(childId.toString())
+            .get();
+        if (childDoc.exists) {
+          final childData = childDoc.data() as Map<String, dynamic>;
+          _children.add({
+            'name': childData['name'] ?? 'Unknown',
+            'class': childData['className'] ?? 'Unknown',
+            'rollNumber': childData['rollNumber'] ?? '',
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading children data: $e');
+    }
+  }
+
   void _logout(BuildContext context) async {
-    // In a real app, this is where you'd clear user session/authentication state (e.g., SharedPreferences, Firebase auth logout).
     await FirebaseAuth.instance.signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
@@ -667,7 +1140,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
       );
-      // Optionally show a message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Logged out successfully'),
@@ -704,78 +1176,168 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen(),
+                  builder: (context) => const ParentProfileUpdateScreen(),
                 ),
               );
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(30),
-              decoration: const BoxDecoration(
-                color: Color(0xFF7DB8C5),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               child: Column(
                 children: [
                   Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 50,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(30),
+                    decoration: const BoxDecoration(
                       color: Color(0xFF7DB8C5),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 50,
+                            color: Color(0xFF7DB8C5),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _userData['name'] ?? 'User',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _userData['role'] ?? 'User',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Sarah & Mark',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _buildInfoCard(
+                          'Email',
+                          _userData['email'] ?? 'Not set',
+                        ),
+                        _buildInfoCard(
+                          'Phone',
+                          _userData['phone'] ?? 'Not set',
+                        ),
+
+                        // Show children section for parents
+                        if (_userData['role'] == 'Parent' &&
+                            _children.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          const Text(
+                            'My Children',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF7DB8C5),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ..._children.map((child) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF7DB8C5,
+                                          ).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.child_care,
+                                          color: Color(0xFF7DB8C5),
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              child['name'],
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Class: ${child['class']} | Roll: ${child['rollNumber']}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+
+                        // Logout button
+                        const SizedBox(height: 20),
+                        _buildLogoutTile(context),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Parent Account',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildInfoCard('Email', 'sarah.mark@example.com'),
-                  _buildInfoCard('Phone', '+91 98765 43210'),
-                  _buildInfoCard('Children', '2 Students'),
-                  _buildInfoCard('Address', '123 Main Street, City'),
-                  // --- LOGOUT OPTION ADDED HERE ---
-                  const SizedBox(height: 16),
-                  _buildLogoutTile(context),
-                  // --- END LOGOUT OPTION ---
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -821,7 +1383,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // New widget for the Logout button/tile
   Widget _buildLogoutTile(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -856,7 +1417,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ---
 // Teacher Contact Screen
 class TeacherContactScreen extends StatelessWidget {
   const TeacherContactScreen({super.key});

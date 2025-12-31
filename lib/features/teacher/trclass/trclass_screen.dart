@@ -527,7 +527,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:studyzee/teacher/trclass/upload_class_screen.dart';
+import 'package:studyzee/features/teacher/trclass/upload_class_screen.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class TrclassScreen extends StatefulWidget {

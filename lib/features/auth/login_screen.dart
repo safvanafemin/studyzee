@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:studyzee/features/auth/signup_screen.dart';
 
-import '../../teacher/home/home_screen.dart';
+import '../teacher/home/home_screen.dart';
 import '../admin/home/home_screen.dart';
 import '../parent/home1/home1_screen.dart';
 import '../student/home/home_screen.dart';

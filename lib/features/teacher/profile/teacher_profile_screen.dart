@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/helper/image_uploader.dart';
-import 'package:studyzee/teacher/profile/profile_model.dart';
+import 'package:studyzee/features/teacher/profile/profile_model.dart';
 // Import the service from separate file
 
 class TeacherProfileScreen extends StatefulWidget {
@@ -55,7 +55,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
               backgroundColor: const Color(0xFF4285F4),
               elevation: 0,
               pinned: true,
-              expandedHeight: 200,
+              expandedHeight: 250,
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   decoration: const BoxDecoration(

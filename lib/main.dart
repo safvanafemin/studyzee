@@ -5,7 +5,7 @@ import 'package:studyzee/features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp().then((_) {
+  await Firebase.  initializeApp().then((_) {
     print("✅ Firebase Initialized");
   });
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:studyzee/teacher/trexam/upload_mcq_question.dart';
+import 'package:studyzee/features/teacher/trexam/upload_mcq_question.dart';
 
 class TrexamScreen extends StatefulWidget {
   const TrexamScreen({super.key});

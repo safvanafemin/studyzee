@@ -7,7 +7,7 @@ import 'package:studyzee/features/admin/home/home_screen.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/features/parent/home1/home1_screen.dart';
 import 'package:studyzee/features/student/home/home_screen.dart';
-import 'package:studyzee/teacher/home/home_screen.dart';
+import 'package:studyzee/features/teacher/home/home_screen.dart';
 // Import your home screens here based on role
 // import 'package:studyzee/features/student/home_screen.dart';
 // import 'package:studyzee/features/teacher/home_screen.dart';
