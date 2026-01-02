@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:studyzee/features/teacher/assignment/assignment_screen.dart';
 import 'package:studyzee/features/teacher/attendace/attendance_screen.dart';
 import 'package:studyzee/features/teacher/notes/notes_screen.dart';
+import 'package:studyzee/features/teacher/notification/notification_list.dart';
+import 'package:studyzee/features/teacher/notification/notification_send.dart';
 import 'package:studyzee/features/teacher/profile/teacher_profile_screen.dart';
 import 'package:studyzee/features/teacher/students_parent/manage_form.dart';
 import 'package:studyzee/features/teacher/trclass/trclass_screen.dart';
@@ -117,7 +119,12 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 ],
               ),
               onPressed: () {
-                _showNotificationsBottomSheet(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SendNotificationScreen(),
+                  ),
+                );
               },
             ),
             const SizedBox(width: 8),
