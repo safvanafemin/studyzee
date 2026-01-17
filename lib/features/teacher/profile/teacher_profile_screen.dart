@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import 'package:studyzee/helper/image_uploader.dart';
 import 'package:studyzee/features/teacher/profile/profile_model.dart';
-// Import the service from separate file
 
 class TeacherProfileScreen extends StatefulWidget {
   const TeacherProfileScreen({super.key});
@@ -19,10 +18,27 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
   late Stream<TeacherProfile> _profileStream;
   bool _isUploadingImage = false;
 
+  // Add a flag to track if widget is mounted
+  bool _isMounted = false;
+
   @override
   void initState() {
     super.initState();
+    _isMounted = true;
     _profileStream = _profileService.getTeacherProfile();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    super.dispose();
+  }
+
+  // Helper method to safely call setState
+  void _safeSetState(VoidCallback fn) {
+    if (_isMounted) {
+      setState(fn);
+    }
   }
 
   @override
@@ -241,13 +257,14 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                       Icons.lock_outline,
                       'Change Password',
                       () {
-                        _showChangePasswordDialog(context);
+                        _showChangePasswordDialog();
                       },
                     ),
                     _buildProfileActionItem(
                       Icons.notifications_outlined,
                       'Notification Settings',
                       () {
+                        // Use the current context safely
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Notification settings'),
@@ -256,7 +273,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                       },
                     ),
                     _buildProfileActionItem(Icons.logout, 'Logout', () {
-                      _showLogoutDialog(context);
+                      _showLogoutDialog();
                     }, isDestructive: true),
                   ]),
                 ]),
@@ -366,21 +383,24 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
   }
 
   Future<void> _changeProfilePicture() async {
-    setState(() {
+    _safeSetState(() {
       _isUploadingImage = true;
     });
 
     try {
       final imageUrl = await _profileService.pickAndUploadProfilePicture();
 
-      if (imageUrl != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile picture updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (mounted) {
+      if (imageUrl != null) {
+        // Use the context from the current widget tree
+        if (_isMounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else if (_isMounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to upload profile picture'),
@@ -389,17 +409,15 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (_isMounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isUploadingImage = false;
-        });
-      }
+      _safeSetState(() {
+        _isUploadingImage = false;
+      });
     }
   }
 
@@ -527,24 +545,21 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                         'designation': designationController.text.trim(),
                       });
 
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profile updated successfully'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                        Navigator.pop(context);
-                      }
+                      // Use the context from the bottom sheet
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Profile updated successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      Navigator.pop(context);
                     } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to update profile: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to update profile: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -604,7 +619,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
     );
   }
 
-  Future<void> _showChangePasswordDialog(BuildContext context) async {
+  Future<void> _showChangePasswordDialog() async {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -708,15 +723,13 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                           newPasswordController.text,
                         );
 
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Password changed successfully'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          Navigator.pop(context);
-                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Password changed successfully'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        Navigator.pop(context);
                       }
                     } on FirebaseAuthException catch (e) {
                       String errorMessage = 'Failed to change password';
@@ -766,7 +779,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
     );
   }
 
-  Future<void> _showLogoutDialog(BuildContext context) async {
+  Future<void> _showLogoutDialog() async {
     await showDialog(
       context: context,
       builder: (context) {
@@ -781,7 +794,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
             TextButton(
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
-                if (mounted) {
+                if (_isMounted) {
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(

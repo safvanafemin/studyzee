@@ -17,13 +17,30 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String _searchQuery = '';
-  String? _selectedClassId;
   Map<String, List<Map<String, dynamic>>> _classStudents = {};
+  
+  // Add mounted flag
+  bool _isMounted = false;
 
   @override
   void initState() {
     super.initState();
+    _isMounted = true;
     _fetchAllStudents();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Safe setState method
+  void _safeSetState(VoidCallback fn) {
+    if (_isMounted) {
+      setState(fn);
+    }
   }
 
   Future<void> _fetchAllStudents() async {
@@ -47,18 +64,13 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
         }
       }
 
-      setState(() {
+      // Use safe setState
+      _safeSetState(() {
         _classStudents = tempMap;
       });
     } catch (e) {
       print('Error fetching students: $e');
     }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   @override
@@ -73,7 +85,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: (value) {
-                    setState(() {
+                    _safeSetState(() {
                       _searchQuery = value.toLowerCase();
                     });
                   },
@@ -610,6 +622,9 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                               ];
                             }
 
+                            // Use safe setState
+                            _safeSetState(() {});
+
                             if (context.mounted) {
                               Navigator.pop(context);
                               CustomSnackBar.show(
@@ -785,7 +800,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                                     .trim(),
                               };
 
-                              setState(() {}); // Trigger UI update
+                              _safeSetState(() {}); // Use safe setState
                             }
 
                             if (context.mounted) {
@@ -927,7 +942,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                   _classStudents[classId]!.removeWhere(
                     (student) => student['id'] == studentId,
                   );
-                  setState(() {});
+                  _safeSetState(() {}); // Use safe setState
                 }
 
                 if (context.mounted) {
@@ -1112,7 +1127,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
 
                 // Remove from local state
                 _classStudents.remove(docId);
-                setState(() {});
+                _safeSetState(() {}); // Use safe setState
 
                 if (context.mounted) {
                   Navigator.pop(context);
