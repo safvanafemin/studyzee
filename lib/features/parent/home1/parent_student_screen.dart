@@ -892,7 +892,7 @@ class _ParentStudentProgressScreenState
       }).toList(),
     );
   }
-
+  
   Widget _buildStatBox(String label, String value, Color color) {
     return Column(
       children: [

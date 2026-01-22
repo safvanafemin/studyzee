@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:studyzee/features/teacher/assignment/assignment_screen.dart';
 import 'package:studyzee/features/teacher/attendace/attendance_screen.dart';
 import 'package:studyzee/features/teacher/notes/notes_screen.dart';
+import 'package:studyzee/features/teacher/notification/notification_list.dart';
+import 'package:studyzee/features/teacher/notification/notification_send.dart';
 import 'package:studyzee/features/teacher/profile/teacher_profile_screen.dart';
 import 'package:studyzee/features/teacher/students_parent/manage_form.dart';
 import 'package:studyzee/features/teacher/trclass/trclass_screen.dart';
+import 'package:studyzee/features/teacher/trexam/teacher_list_exam.dart';
 import 'package:studyzee/features/teacher/trexam/trexam_screen.dart';
 import 'package:studyzee/features/teacher/trprogress/trprogress_screen.dart';
 import 'package:studyzee/features/teacher/trtimetable/trtimetable.dart';
@@ -117,7 +120,12 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                 ],
               ),
               onPressed: () {
-                _showNotificationsBottomSheet(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SendNotificationScreen(),
+                  ),
+                );
               },
             ),
             const SizedBox(width: 8),
@@ -229,7 +237,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                   _buildFeatureCard('Exam', Icons.event_available, () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => TrexamScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => TeacherExamsListScreen(),
+                      ),
                     );
                   }),
                   _buildFeatureCard(

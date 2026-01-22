@@ -39,7 +39,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
     try {
       final querySnapshot = await _firestore
           .collection('Classes')
-          .orderBy('name')
+          .orderBy('name') 
           .get();
 
       setState(() {
@@ -396,7 +396,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                     value: classDoc.id,
                     child: Text(displayName),
                   );
-                }).toList(),
+                }).toList(),  
               ],
               onChanged: (value) {
                 setState(() {
@@ -454,7 +454,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 8),
-            Text(
+            Text(   
               'Class: $_selectedClassName',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),

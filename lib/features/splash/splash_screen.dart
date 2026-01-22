@@ -68,7 +68,9 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String userRole = userData['role'] ?? 'Student';
+      String userRole = userData['role'] ?? '';
+      print('User Role: $userRole');
+  
 
       // Navigate based on role
       _navigateToHomeScreen(userRole);
