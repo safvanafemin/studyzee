@@ -27,6 +27,7 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
   List<Map<String, dynamic>> _classes = [];
   List<Map<String, dynamic>> _assignments = [];
   List<Map<String, dynamic>> _submissions = [];
+  List<Map<String, dynamic>> _pendingStudents = [];
   Map<String, dynamic>? _selectedAssignmentDetails;
   bool _isLoading = false;
 
@@ -146,23 +147,50 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
           .where('assignmentId', isEqualTo: assignmentId)
           .get();
 
-      setState(() {
-        _submissions = submissionsSnapshot.docs.map((doc) {
+      final submissionsList = submissionsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'studentId': data['studentId'],
+          'studentName': data['studentName'] ?? 'Unknown',
+          'submittedAt': data['submittedAt'],
+          'status': data['status'] ?? 'pending',
+          'fileUrl': data['fileUrl'] ?? '',
+          'fileName': data['fileName'] ?? '',
+          'marks': data['marks'] ?? 0,
+          'feedback': data['feedback'] ?? '',
+          'submissionDate': _formatDate(data['submittedAt']),
+          'submissionTime': _formatTime(data['submittedAt']),
+        };
+      }).toList();
+
+      // Load all students in the class to find who hasn't submitted
+      final studentsSnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'Student')
+          .where('classId', isEqualTo: selectedClassId)
+          .get();
+
+      final List<Map<String, dynamic>> pendingStudents = [];
+      final submittedStudentIds = submissionsList
+          .map((s) => s['studentId'])
+          .toSet();
+
+      for (var doc in studentsSnapshot.docs) {
+        if (!submittedStudentIds.contains(doc.id)) {
           final data = doc.data();
-          return {
-            'id': doc.id,
-            'studentId': data['studentId'],
-            'studentName': data['studentName'] ?? 'Unknown',
-            'submittedAt': data['submittedAt'],
-            'status': data['status'] ?? 'pending',
-            'fileUrl': data['fileUrl'] ?? '',
-            'fileName': data['fileName'] ?? '',
-            'marks': data['marks'] ?? 0,
-            'feedback': data['feedback'] ?? '',
-            'submissionDate': _formatDate(data['submittedAt']),
-            'submissionTime': _formatTime(data['submittedAt']),
-          };
-        }).toList();
+          pendingStudents.add({
+            'studentId': doc.id,
+            'studentName': data['name'] ?? 'Unknown',
+            'status': 'not_submitted',
+            'rollNumber': data['rollNumber'] ?? 'N/A',
+          });
+        }
+      }
+
+      setState(() {
+        _submissions = submissionsList;
+        _pendingStudents = pendingStudents;
       });
     } catch (e) {
       print('Error loading assignment details: $e');
@@ -450,40 +478,18 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _viewPdfInApp(url, fileName!);
-                },
-                icon: const Icon(Icons.visibility),
-                label: const Text('View PDF'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => _downloadFile(url, fileName!),
-                icon: const Icon(Icons.download),
-                label: const Text('Download'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _viewPdfInApp(url, fileName!);
+            },
+            icon: const Icon(Icons.visibility),
+            label: const Text('View PDF'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
           ),
         ],
       );
@@ -496,17 +502,9 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
           const Icon(Icons.description, size: 64, color: Colors.blue),
           const SizedBox(height: 16),
           const Text('Word Document'),
-          const SizedBox(height: 8),
-          const Text('Download to view', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => _downloadFile(url, fileName!),
-            icon: const Icon(Icons.download),
-            label: const Text('Download'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
+          const Text(
+            'Viewing Word documents requires downloading (currently disabled)',
           ),
         ],
       );
@@ -1134,42 +1132,126 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Submissions List
-                Text(
-                  'Student Submissions (${_submissions.length})',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                // Submissions & Pending Tabs
+                DefaultTabController(
+                  length: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TabBar(
+                        labelColor: Colors.blue,
+                        unselectedLabelColor: Colors.grey,
+                        indicatorColor: Colors.blue,
+                        tabs: [
+                          Tab(text: 'Submitted (${_submissions.length})'),
+                          Tab(text: 'Pending (${_pendingStudents.length})'),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 400, // Adjust as needed
+                        child: TabBarView(
+                          children: [
+                            // Submitted Tab
+                            if (_submissions.isEmpty)
+                              const Center(child: Text('No submissions yet'))
+                            else
+                              ListView.builder(
+                                itemCount: _submissions.length,
+                                itemBuilder: (context, index) =>
+                                    _buildSubmissionItem(_submissions[index]),
+                              ),
+
+                            // Pending Tab
+                            if (_pendingStudents.isEmpty)
+                              const Center(
+                                child: Text('All students have submitted'),
+                              )
+                            else
+                              ListView.builder(
+                                itemCount: _pendingStudents.length,
+                                itemBuilder: (context, index) =>
+                                    _buildPendingStudentItem(
+                                      _pendingStudents[index],
+                                    ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator()),
-                if (!_isLoading && _submissions.isEmpty)
-                  const Center(
-                    child: Column(
-                      children: [
-                        SizedBox(height: 40),
-                        Icon(Icons.assignment, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'No submissions yet',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                        Text(
-                          'Students will appear here once they submit',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (!_isLoading && _submissions.isNotEmpty)
-                  ..._submissions.map(_buildSubmissionItem).toList(),
               ],
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPendingStudentItem(Map<String, dynamic> student) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.grey[200],
+            child: Text(
+              student['studentName'][0],
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  student['studentName'],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Roll No: ${student['rollNumber']}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'PENDING',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1303,16 +1385,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: _downloadFile,
-            tooltip: 'Download PDF',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.fileName)),
       body: Stack(
         children: [
           PDFView(

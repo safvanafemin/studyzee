@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:studyzee/core/services/notification_service.dart';
+import 'package:studyzee/core/models/app_notification.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({super.key});
@@ -13,7 +16,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
-  
+
   // For recipient selection
   String _recipientType = 'class'; // 'class', 'student', 'parent', 'all'
   String? _selectedClassId;
@@ -22,12 +25,12 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   String? _selectedStudentName;
   String? _selectedParentId;
   String? _selectedParentName;
-  
+
   // Lists for dropdowns
   List<Map<String, dynamic>> _classes = [];
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _parents = [];
-  
+
   bool _isLoading = false;
   bool _isSending = false;
 
@@ -114,7 +117,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
   List<Map<String, dynamic>> _getFilteredStudents() {
     if (_selectedClassId == null) return _students;
-    return _students.where((student) => student['classId'] == _selectedClassId).toList();
+    return _students
+        .where((student) => student['classId'] == _selectedClassId)
+        .toList();
   }
 
   Future<void> _sendNotification() async {
@@ -140,117 +145,77 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     });
 
     try {
-      String targetType = '';
-      String targetName = '';
-      List<String> recipientIds = [];
+      final notificationService = NotificationService();
+      final user = FirebaseAuth.instance.currentUser;
+      final senderId = user?.uid ?? 'unknown';
+      final senderName = 'Teacher'; // Ideally get from user profile
 
-      // Prepare notification data based on recipient type
       switch (_recipientType) {
         case 'class':
-          targetType = 'class';
-          targetName = _selectedClassName ?? '';
-          
-          // Get all students in the selected class
-          final classStudents = _students
-              .where((student) => student['classId'] == _selectedClassId)
-              .toList();
-          
-          for (var student in classStudents) {
-            // Add student
-            recipientIds.add('student_${student['id']}');
-            // Add parent if exists
-            if (student['parentId'] != null) {
-              recipientIds.add('parent_${student['parentId']}');
-            }
-          }
-          break;
-
-        case 'all_classes':
-          targetType = 'all_classes';
-          targetName = 'All Classes';
-          
-          // Add all students and parents
-          for (var student in _students) {
-            recipientIds.add('student_${student['id']}');
-            if (student['parentId'] != null) {
-              recipientIds.add('parent_${student['parentId']}');
-            }
-          }
+          await notificationService.sendClassNotification(
+            classId: _selectedClassId!,
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
+          );
           break;
 
         case 'student':
-          targetType = 'student';
-          targetName = _selectedStudentName ?? '';
-          
-          // Add selected student
-          recipientIds.add('student_$_selectedStudentId');
-          
-          // Add their parent if exists
-          final student = _students.firstWhere(
-            (s) => s['id'] == _selectedStudentId,
-            orElse: () => {},
+          await notificationService.sendIndividualNotification(
+            recipientId: _selectedStudentId!,
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
           );
-          
-          if (student.isNotEmpty && student['parentId'] != null) {
-            recipientIds.add('parent_${student['parentId']}');
-          }
-          break;
-
-        case 'all_students':
-          targetType = 'all_students';
-          targetName = 'All Students';
-          
-          // Add all students
-          for (var student in _students) {
-            recipientIds.add('student_${student['id']}');
-          }
           break;
 
         case 'parent':
-          targetType = 'parent';
-          targetName = _selectedParentName ?? '';
-          
-          // Add selected parent
-          recipientIds.add('parent_$_selectedParentId');
+          await notificationService.sendIndividualNotification(
+            recipientId: _selectedParentId!,
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
+          );
+          break;
+
+        case 'all_students':
+          await notificationService.sendRoleNotification(
+            role: 'Student',
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
+          );
           break;
 
         case 'all_parents':
-          targetType = 'all_parents';
-          targetName = 'All Parents';
-          
-          // Add all parents
-          for (var parent in _parents) {
-            recipientIds.add('parent_${parent['id']}');
-          }
+          await notificationService.sendRoleNotification(
+            role: 'Parent',
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
+          );
           break;
-      }
 
-      // Create notification document
-      final notificationData = {
-        'title': _titleController.text.trim(),
-        'message': _messageController.text.trim(),
-        'targetType': targetType,
-        'targetName': targetName,
-        'recipientIds': recipientIds,
-        'recipientCount': recipientIds.length,
-        'createdAt': DateTime.now(),
-        'status': 'sent',
-      };
-
-      await _firestore.collection('Notifications').add(notificationData);
-
-      // Also create individual notification records for each recipient
-      for (var recipientId in recipientIds) {
-        final individualNotification = {
-          'notificationTitle': _titleController.text.trim(),
-          'notificationMessage': _messageController.text.trim(),
-          'recipientId': recipientId,
-          'isRead': false,
-          'createdAt': DateTime.now(),
-          'sentAt': DateTime.now(),
-        };
-        
-        await _firestore.collection('UserNotifications').add(individualNotification);
+        case 'all_classes':
+          await notificationService.sendRoleNotification(
+            role: 'Both',
+            title: _titleController.text.trim(),
+            message: _messageController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: senderName,
+          );
+          break;
       }
 
       // Show success message
@@ -264,13 +229,12 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       // Clear form
       _titleController.clear();
       _messageController.clear();
-      
+
       // Navigate back after delay
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         Navigator.pop(context, true);
       }
-
     } catch (e) {
       _showError('Failed to send notification: $e');
     } finally {
@@ -284,10 +248,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -433,11 +394,27 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               runSpacing: 8,
               children: [
                 _buildRecipientTypeChip('Class', 'class', Icons.class_),
-                _buildRecipientTypeChip('All Classes', 'all_classes', Icons.all_inclusive),
+                _buildRecipientTypeChip(
+                  'All Classes',
+                  'all_classes',
+                  Icons.all_inclusive,
+                ),
                 _buildRecipientTypeChip('Student', 'student', Icons.school),
-                _buildRecipientTypeChip('All Students', 'all_students', Icons.people),
-                _buildRecipientTypeChip('Parent', 'parent', Icons.family_restroom),
-                _buildRecipientTypeChip('All Parents', 'all_parents', Icons.groups),
+                _buildRecipientTypeChip(
+                  'All Students',
+                  'all_students',
+                  Icons.people,
+                ),
+                _buildRecipientTypeChip(
+                  'Parent',
+                  'parent',
+                  Icons.family_restroom,
+                ),
+                _buildRecipientTypeChip(
+                  'All Parents',
+                  'all_parents',
+                  Icons.groups,
+                ),
               ],
             ),
           ],
@@ -448,15 +425,11 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
   Widget _buildRecipientTypeChip(String label, String type, IconData icon) {
     bool isSelected = _recipientType == type;
-    
+
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
       ),
       selected: isSelected,
       onSelected: (selected) {
@@ -470,9 +443,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       },
       backgroundColor: Colors.white,
       selectedColor: const Color.fromARGB(255, 2, 18, 69),
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black,
-      ),
+      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
       side: BorderSide(
         color: isSelected
             ? const Color.fromARGB(255, 2, 18, 69)
@@ -529,8 +500,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         setState(() {
           _selectedClassId = value;
           if (value != null) {
-            _selectedClassName = _classes
-                .firstWhere((c) => c['id'] == value)['name'];
+            _selectedClassName = _classes.firstWhere(
+              (c) => c['id'] == value,
+            )['name'];
             // Clear student selection when class changes
             _selectedStudentId = null;
             _selectedStudentName = null;
@@ -548,7 +520,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
   Widget _buildStudentDropdown() {
     final filteredStudents = _getFilteredStudents();
-    
+
     return DropdownButtonFormField<String>(
       value: _selectedStudentId,
       decoration: InputDecoration(
@@ -571,10 +543,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 Text(student['name']),
                 Text(
                   student['className'] ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -586,8 +555,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               setState(() {
                 _selectedStudentId = value;
                 if (value != null) {
-                  _selectedStudentName = filteredStudents
-                      .firstWhere((s) => s['id'] == value)['name'];
+                  _selectedStudentName = filteredStudents.firstWhere(
+                    (s) => s['id'] == value,
+                  )['name'];
                 }
               });
             }
@@ -627,10 +597,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 Text(parent['name']),
                 Text(
                   parent['email'] ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -641,8 +608,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         setState(() {
           _selectedParentId = value;
           if (value != null) {
-            _selectedParentName = _parents
-                .firstWhere((p) => p['id'] == value)['name'];
+            _selectedParentName = _parents.firstWhere(
+              (p) => p['id'] == value,
+            )['name'];
           }
         });
       },

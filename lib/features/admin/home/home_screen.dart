@@ -11,6 +11,8 @@ import 'package:studyzee/features/student/timetable/timetable_screen.dart';
 import '../../../utils/helper/helper_snackbar.dart';
 import '../class/classmanage_screen.dart';
 import '../student/studentmanage_screen.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../core/models/app_notification.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -580,14 +582,120 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 // SEND NOTIFICATION SCREEN (Keep existing)
 // -----------------------------------------------------------------------------
 
-class SendNotificationScreen extends StatelessWidget {
+class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final titleController = TextEditingController();
-    final bodyController = TextEditingController();
+  State<SendNotificationScreen> createState() => _SendNotificationScreenState();
+}
 
+class _SendNotificationScreenState extends State<SendNotificationScreen> {
+  final _titleController = TextEditingController();
+  final _bodyController = TextEditingController();
+  String _selectedTarget = 'All Users';
+  bool _isSending = false;
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _bodyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendNotification() async {
+    if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    setState(() => _isSending = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final senderId = user?.uid ?? 'admin';
+
+      switch (_selectedTarget) {
+        case 'All Users':
+          await _notificationService.sendRoleNotification(
+            role: 'Both',
+            title: _titleController.text.trim(),
+            message: _bodyController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: 'Admin',
+          );
+          break;
+        case 'Students':
+          await _notificationService.sendRoleNotification(
+            role: 'Student',
+            title: _titleController.text.trim(),
+            message: _bodyController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: 'Admin',
+          );
+          break;
+        case 'Teachers':
+          await _notificationService.sendRoleNotification(
+            role: 'Teacher',
+            title: _titleController.text.trim(),
+            message: _bodyController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: 'Admin',
+          );
+          break;
+        case 'Class 10':
+          // We need classId for Class 10. For now, let's assume we find it by name.
+          final classSnap = await FirebaseFirestore.instance
+              .collection('Classes')
+              .where('name', isEqualTo: '10')
+              .limit(1)
+              .get();
+
+          if (classSnap.docs.isNotEmpty) {
+            await _notificationService.sendClassNotification(
+              classId: classSnap.docs.first.id,
+              title: _titleController.text.trim(),
+              message: _bodyController.text.trim(),
+              type: NotificationType.announcement,
+              senderId: senderId,
+              senderName: 'Admin',
+            );
+          } else {
+            throw Exception('Class 10 not found');
+          }
+          break;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification sent successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending notification: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Send New Notification'),
@@ -614,7 +722,7 @@ class SendNotificationScreen extends StatelessWidget {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
               ),
-              value: 'All Users',
+              value: _selectedTarget,
               items: ['All Users', 'Students', 'Teachers', 'Class 10'].map((
                 String value,
               ) {
@@ -623,11 +731,14 @@ class SendNotificationScreen extends StatelessWidget {
                   child: Text(value),
                 );
               }).toList(),
-              onChanged: (String? newValue) {},
+              onChanged: (String? newValue) {
+                if (newValue != null)
+                  setState(() => _selectedTarget = newValue);
+              },
             ),
             const SizedBox(height: 20),
             TextField(
-              controller: titleController,
+              controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Notification Title (e.g., Important Notice)',
                 border: OutlineInputBorder(),
@@ -636,7 +747,7 @@ class SendNotificationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             TextField(
-              controller: bodyController,
+              controller: _bodyController,
               maxLines: 5,
               decoration: const InputDecoration(
                 labelText: 'Message Body',
@@ -646,10 +757,19 @@ class SendNotificationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              icon: const Icon(Icons.send),
-              label: const Text(
-                'Send Notification Now',
-                style: TextStyle(fontSize: 16),
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.send),
+              label: Text(
+                _isSending ? 'Sending...' : 'Send Notification Now',
+                style: const TextStyle(fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 40, 167, 69),
@@ -659,16 +779,7 @@ class SendNotificationScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Notification sent successfully! (Placeholder)',
-                    ),
-                  ),
-                );
-                Navigator.pop(context);
-              },
+              onPressed: _isSending ? null : _sendNotification,
             ),
           ],
         ),

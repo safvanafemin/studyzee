@@ -18,62 +18,123 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.blue.shade600,
-        elevation: 0,
-        title: const Text(
-          'Exams',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          backgroundColor: Colors.blue.shade600,
+          elevation: 0,
+          title: const Text(
+            'Exams',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Upcoming'),
+              Tab(text: 'Completed'),
+            ],
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+        body: TabBarView(
+          children: [
+            // Upcoming Exams
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('exams')
+                  .where('status', isEqualTo: 'upcoming')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No upcoming exams'));
+                }
+
+                final exams = snapshot.data!.docs;
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: exams.length,
+                  itemBuilder: (context, index) {
+                    final exam = exams[index].data() as Map<String, dynamic>;
+                    exam['id'] = exams[index].id;
+                    return _buildExamCard(exam);
+                  },
+                );
+              },
+            ),
+
+            // Completed Exams (Results)
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('exam_submissions')
+                  .where('studentId', isEqualTo: _auth.currentUser?.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No completed exams'));
+                }
+
+                final submissions = snapshot.data!.docs;
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: submissions.length,
+                  itemBuilder: (context, index) {
+                    final submission =
+                        submissions[index].data() as Map<String, dynamic>;
+                    return _buildCompletedExamCard(submission);
+                  },
+                );
+              },
+            ),
+          ],
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('exams')
-            .where('status', isEqualTo: 'upcoming')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    );
+  }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+  Widget _buildCompletedExamCard(Map<String, dynamic> submission) {
+    final score = submission['score'] ?? 0;
+    final total = submission['totalQuestions'] ?? 0;
+    final submittedAt = (submission['submittedAt'] as Timestamp?)?.toDate();
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.quiz_outlined, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No exams available',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final exams = snapshot.data!.docs;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: exams.length,
-            itemBuilder: (context, index) {
-              final exam = exams[index].data() as Map<String, dynamic>;
-              exam['id'] = exams[index].id;
-              return _buildExamCard(exam);
-            },
-          );
-        },
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.check_circle, color: Colors.green),
+        title: Text(
+          'Score: $score/$total',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          submittedAt != null
+              ? DateFormat('dd MMM yyyy, hh:mm a').format(submittedAt)
+              : 'N/A',
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '${(score / total * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }

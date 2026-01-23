@@ -748,7 +748,7 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ),
-                        const Icon(Icons.download, color: Colors.blue),
+                        const SizedBox(width: 12),
                       ],
                     ),
                   ),
@@ -898,19 +898,6 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement download functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Downloading file...'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            icon: const Icon(Icons.download),
-            label: const Text('Download'),
           ),
         ],
       ),

@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:studyzee/features/teacher/students_parent/add_student_parent.dart';
+import 'package:studyzee/core/services/notification_service.dart';
+import 'package:studyzee/core/models/app_notification.dart';
+import 'package:studyzee/core/models/user_model.dart';
 
 class TrAttendanceScreen extends StatefulWidget {
   const TrAttendanceScreen({super.key});
@@ -39,7 +42,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
     try {
       final querySnapshot = await _firestore
           .collection('Classes')
-          .orderBy('name') 
+          .orderBy('name')
           .get();
 
       setState(() {
@@ -262,19 +265,24 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
             'updatedAt': timestamp,
           }, SetOptions(merge: true));
 
+      final notificationService = NotificationService();
+
       // Update each student's attendance record
       for (var student in _students) {
         final studentData = student.data() as Map<String, dynamic>;
+        final studentId = student.id;
+        final status = _attendanceStatus[studentId] ?? 'Present';
+
         final studentAttendanceRef = _firestore
             .collection('users')
-            .doc(student.id)
+            .doc(studentId)
             .collection('attendance')
             .doc(dateStr);
 
         await studentAttendanceRef.set({
           'date': dateStr,
           'dateTime': Timestamp.fromDate(_selectedDate),
-          'status': _attendanceStatus[student.id],
+          'status': status,
           'classId': _selectedClassId,
           'className': _selectedClassName,
           'markedBy': teacher?.uid,
@@ -285,11 +293,27 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
         }, SetOptions(merge: true));
 
         // Also store a summary in student document
-        await _firestore.collection('users').doc(student.id).update({
+        await _firestore.collection('users').doc(studentId).update({
           'lastAttendanceDate': dateStr,
-          'lastAttendanceStatus': _attendanceStatus[student.id],
+          'lastAttendanceStatus': status,
           'updatedAt': timestamp,
         });
+
+        // SEND NOTIFICATION TO PARENT IF ABSENT
+        if (status == 'Absent') {
+          final parentId = studentData['parentId'];
+          if (parentId != null && parentId.toString().isNotEmpty) {
+            await notificationService.sendIndividualNotification(
+              recipientId: parentId.toString(),
+              title: 'Attendance Alert: Absent',
+              message:
+                  '${studentData['name']} has been marked ABSENT for today (${dateStr}).',
+              type: NotificationType.attendance,
+              senderId: teacher?.uid ?? 'system',
+              senderName: teacher?.displayName ?? 'Teacher',
+            );
+          }
+        }
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -396,7 +420,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                     value: classDoc.id,
                     child: Text(displayName),
                   );
-                }).toList(),  
+                }).toList(),
               ],
               onChanged: (value) {
                 setState(() {
@@ -454,7 +478,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 8),
-            Text(   
+            Text(
               'Class: $_selectedClassName',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),

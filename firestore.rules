@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default rule: Allow authenticated users to read and write
+    // This is simplified for a college project
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // You can still keep some basic protection for users
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Notifications specific to users
+    match /users/{userId}/notifications/{notifId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

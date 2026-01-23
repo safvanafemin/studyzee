@@ -10,6 +10,9 @@ import 'package:studyzee/features/student/progress/progress_screen.dart';
 import 'package:studyzee/features/student/studymaterial/studymaterail_screen.dart';
 import 'package:studyzee/features/student/timetable/timetable_screen.dart';
 import 'package:studyzee/features/student/upload/upload_screen.dart';
+import 'package:studyzee/core/models/app_notification.dart';
+import 'package:studyzee/core/services/notification_service.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -401,146 +404,15 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  List<Map<String, dynamic>> _notifications = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNotifications();
-  }
-
-  Future<void> _loadNotifications() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('notifications')
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      setState(() {
-        _notifications = querySnapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'title': data['title'] ?? 'Notification',
-            'message': data['message'] ?? '',
-            'type': data['type'] ?? 'general',
-            'isRead': data['isRead'] ?? false,
-            'createdAt': data['createdAt'],
-          };
-        }).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error loading notifications: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _markAsRead(String notificationId) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('notifications')
-          .doc(notificationId)
-          .update({'isRead': true});
-
-      setState(() {
-        final index = _notifications.indexWhere(
-          (n) => n['id'] == notificationId,
-        );
-        if (index != -1) {
-          _notifications[index]['isRead'] = true;
-        }
-      });
-    } catch (e) {
-      print('Error marking as read: $e');
-    }
-  }
-
-  Future<void> _markAllAsRead() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      final batch = _firestore.batch();
-      for (var notification in _notifications) {
-        if (!notification['isRead']) {
-          final ref = _firestore
-              .collection('users')
-              .doc(user.uid)
-              .collection('notifications')
-              .doc(notification['id']);
-          batch.update(ref, {'isRead': true});
-        }
-      }
-
-      await batch.commit();
-      setState(() {
-        for (var notification in _notifications) {
-          notification['isRead'] = true;
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All notifications marked as read'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('Error marking all as read: $e');
-    }
-  }
-
-  IconData _getNotificationIcon(String type) {
-    switch (type) {
-      case 'assignment':
-        return Icons.assignment;
-      case 'exam':
-        return Icons.quiz;
-      case 'fee':
-        return Icons.payment;
-      case 'attendance':
-        return Icons.access_time;
-      case 'announcement':
-        return Icons.announcement;
-      default:
-        return Icons.notifications;
-    }
-  }
-
-  Color _getNotificationColor(String type) {
-    switch (type) {
-      case 'assignment':
-        return const Color(0xFF3B82F6);
-      case 'exam':
-        return const Color(0xFF8B5CF6);
-      case 'fee':
-        return const Color(0xFFF59E0B);
-      case 'attendance':
-        return const Color(0xFFEF4444);
-      case 'announcement':
-        return const Color(0xFF10B981);
-      default:
-        return const Color(0xFF60a5fa);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final user = _auth.currentUser;
+    if (user == null)
+      return const Scaffold(body: Center(child: Text('Please login')));
+
     return Scaffold(
       backgroundColor: const Color(0xFFf0f4ff),
       appBar: AppBar(
@@ -560,20 +432,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
         centerTitle: true,
         actions: [
-          if (_notifications.any((n) => !n['isRead']))
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: const Text(
-                'Mark all read',
-                style: TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ),
+          IconButton(
+            onPressed: () => _notificationService.markAllAsRead(user.uid),
+            icon: const Icon(Icons.done_all, color: Colors.white),
+            tooltip: 'Mark all as read',
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _notifications.isEmpty
-          ? Center(
+      body: StreamBuilder<List<AppNotification>>(
+        stream: _notificationService.getNotifications(user.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final notifications = snapshot.data ?? [];
+
+          if (notifications.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -591,66 +471,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'You\'ll see notifications here when you receive them',
-                    style: TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notification = _notifications[index];
-                final type = notification['type'] as String;
-                final createdAt = notification['createdAt'] as Timestamp?;
+            );
+          }
 
-                return _buildNotificationCard(
-                  title: notification['title'],
-                  message: notification['message'],
-                  time: createdAt != null
-                      ? _formatTimeAgo(createdAt.toDate())
-                      : 'Recently',
-                  icon: _getNotificationIcon(type),
-                  color: _getNotificationColor(type),
-                  isRead: notification['isRead'],
-                  onTap: () {
-                    _markAsRead(notification['id']);
-                    // Handle notification tap based on type
-                  },
-                );
-              },
-            ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: notifications.length,
+            itemBuilder: (context, index) {
+              final notification = notifications[index];
+              return _buildNotificationCard(
+                notification: notification,
+                onTap: () {
+                  _notificationService.markAsRead(user.uid, notification.id);
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  String _formatTimeAgo(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inMinutes < 1) return 'Just now';
-    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
-    if (difference.inHours < 24) return '${difference.inHours}h ago';
-    if (difference.inDays < 7) return '${difference.inDays}d ago';
-    if (difference.inDays < 30)
-      return '${(difference.inDays / 7).floor()}w ago';
-    if (difference.inDays < 365)
-      return '${(difference.inDays / 30).floor()}mo ago';
-    return '${(difference.inDays / 365).floor()}y ago';
-  }
-
   Widget _buildNotificationCard({
-    required String title,
-    required String message,
-    required String time,
-    required IconData icon,
-    required Color color,
-    required bool isRead,
+    required AppNotification notification,
     VoidCallback? onTap,
   }) {
+    final color = _getNotificationColor(notification.type);
+    final icon = _getNotificationIcon(notification.type);
+    final isRead = notification.isRead;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -663,11 +514,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
             width: 1,
           ),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+            if (isRead)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
           ],
         ),
         child: ListTile(
@@ -685,7 +537,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             children: [
               Expanded(
                 child: Text(
-                  title,
+                  notification.title,
                   style: TextStyle(
                     fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
                     fontSize: 16,
@@ -709,7 +561,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             children: [
               const SizedBox(height: 6),
               Text(
-                message,
+                notification.message,
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
               ),
               const SizedBox(height: 8),
@@ -722,7 +574,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    time,
+                    _formatTimeAgo(notification.createdAt),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
@@ -732,6 +584,51 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
       ),
     );
+  }
+
+  String _formatTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return DateFormat('MMM dd').format(date);
+  }
+
+  IconData _getNotificationIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.assignment:
+        return Icons.assignment;
+      case NotificationType.exam:
+        return Icons.quiz;
+      case NotificationType.fee:
+        return Icons.payment;
+      case NotificationType.attendance:
+        return Icons.access_time;
+      case NotificationType.announcement:
+        return Icons.announcement;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getNotificationColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.assignment:
+        return const Color(0xFF3B82F6);
+      case NotificationType.exam:
+        return const Color(0xFF8B5CF6);
+      case NotificationType.fee:
+        return const Color(0xFFF59E0B);
+      case NotificationType.attendance:
+        return const Color(0xFFEF4444);
+      case NotificationType.announcement:
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF60a5fa);
+    }
   }
 }
 
