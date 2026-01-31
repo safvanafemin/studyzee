@@ -42,7 +42,8 @@ class NotificationService {
     required String senderName,
   }) async {
     final studentsSnapshot = await _firestore
-        .collection('Students')
+        .collection('users')
+        .where('role', isEqualTo: 'Student')
         .where('classId', isEqualTo: classId)
         .get();
 

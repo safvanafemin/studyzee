@@ -23,17 +23,12 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
 
   List<DocumentSnapshot> _attendanceRecords = [];
   Map<String, Map<String, dynamic>> _monthlyStats = {};
-  Map<String, int> _yearlyStats = {
-    'present': 0,
-    'absent': 0,
-    'leave': 0,
-    'total': 0,
-  };
+  Map<String, int> _yearlyStats = {'present': 0, 'absent': 0, 'total': 0};
 
   DateTime _selectedMonth = DateTime.now();
   bool _isLoading = true;
   bool _showStats = true;
-  String _filterStatus = 'All'; // 'All', 'Present', 'Absent', 'Leave'
+  String _filterStatus = 'All'; // 'All', 'Present', 'Absent'
   String _timeFilter = 'This Month'; // 'This Month', 'Last Month', 'Custom'
 
   @override
@@ -127,7 +122,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
       // Reset stats
       _monthlyStats.clear();
       setState(() {
-        _yearlyStats = {'present': 0, 'absent': 0, 'leave': 0, 'total': 0};
+        _yearlyStats = {'present': 0, 'absent': 0, 'total': 0};
       });
 
       // Get current year's attendance
@@ -149,11 +144,13 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         final status = data['status'] as String?;
 
         if (status != null) {
-          if (_yearlyStats.containsKey(status.toLowerCase())) {
-            _yearlyStats[status.toLowerCase()] =
-                _yearlyStats[status.toLowerCase()]! + 1;
+          final statusLower = status.toLowerCase();
+          if (statusLower == 'present' || statusLower == 'absent') {
+            if (_yearlyStats.containsKey(statusLower)) {
+              _yearlyStats[statusLower] = _yearlyStats[statusLower]! + 1;
+            }
+            _yearlyStats['total'] = _yearlyStats['total']! + 1;
           }
-          _yearlyStats['total'] = _yearlyStats['total']! + 1;
         }
       }
 
@@ -165,21 +162,19 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         final dateTime = (data['dateTime'] as Timestamp?)?.toDate();
 
         if (dateTime != null && status != null) {
-          final monthKey = DateFormat('yyyy-MM').format(dateTime);
+          final statusLower = status.toLowerCase();
+          if (statusLower == 'present' || statusLower == 'absent') {
+            final monthKey = DateFormat('yyyy-MM').format(dateTime);
 
-          if (!monthlyGroup.containsKey(monthKey)) {
-            monthlyGroup[monthKey] = {
-              'present': 0,
-              'absent': 0,
-              'leave': 0,
-              'total': 0,
-            };
+            if (!monthlyGroup.containsKey(monthKey)) {
+              monthlyGroup[monthKey] = {'present': 0, 'absent': 0, 'total': 0};
+            }
+
+            monthlyGroup[monthKey]![statusLower] =
+                monthlyGroup[monthKey]![statusLower]! + 1;
+            monthlyGroup[monthKey]!['total'] =
+                monthlyGroup[monthKey]!['total']! + 1;
           }
-
-          monthlyGroup[monthKey]![status.toLowerCase()] =
-              monthlyGroup[monthKey]![status.toLowerCase()]! + 1;
-          monthlyGroup[monthKey]!['total'] =
-              monthlyGroup[monthKey]!['total']! + 1;
         }
       }
 
@@ -260,11 +255,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     'Absent',
                     _yearlyStats['absent']?.toString() ?? '0',
                     Colors.red,
-                  ),
-                  _buildQuickStat(
-                    'Leave',
-                    _yearlyStats['leave']?.toString() ?? '0',
-                    Colors.orange,
                   ),
                 ],
               ),
@@ -355,7 +345,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     DropdownMenuItem(value: 'All', child: Text('All')),
                     DropdownMenuItem(value: 'Present', child: Text('Present')),
                     DropdownMenuItem(value: 'Absent', child: Text('Absent')),
-                    DropdownMenuItem(value: 'Leave', child: Text('Leave')),
                   ],
                 ),
               ],
@@ -517,7 +506,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
     final total = monthStats['total'] ?? 0;
     final present = monthStats['present'] ?? 0;
     final absent = monthStats['absent'] ?? 0;
-    final leave = monthStats['leave'] ?? 0;
     final percentage = total > 0 ? (present / total * 100) : 0;
 
     return Card(
@@ -578,8 +566,8 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
               children: [
                 _buildStatItem('Present', present.toString(), Colors.green),
                 _buildStatItem('Absent', absent.toString(), Colors.red),
-                _buildStatItem('Leave', leave.toString(), Colors.orange),
                 _buildStatItem('Total Days', total.toString(), Colors.blue),
+                Container(),
               ],
             ),
           ],
@@ -620,8 +608,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         return Colors.green;
       case 'absent':
         return Colors.red;
-      case 'leave':
-        return Colors.orange;
       default:
         return Colors.grey;
     }
@@ -639,8 +625,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         return Icons.check_circle;
       case 'absent':
         return Icons.cancel;
-      case 'leave':
-        return Icons.airplane_ticket;
       default:
         return Icons.help;
     }

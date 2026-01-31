@@ -6,11 +6,7 @@ import 'package:studyzee/features/admin/home/student_payment_screen.dart';
 import 'package:studyzee/features/admin/home/teacher_manage_section.dart';
 import 'package:studyzee/features/admin/home/time_table_manage.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
-import 'package:studyzee/features/student/timetable/timetable_screen.dart';
-
-import '../../../utils/helper/helper_snackbar.dart';
 import '../class/classmanage_screen.dart';
-import '../student/studentmanage_screen.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/models/app_notification.dart';
 
@@ -213,370 +209,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// PAYMENTS SCREEN (Keep existing)
-// -----------------------------------------------------------------------------
-
-class PaymentsScreen extends StatefulWidget {
-  const PaymentsScreen({super.key});
-
-  @override
-  State<PaymentsScreen> createState() => _PaymentsScreenState();
-}
-
-class _PaymentsScreenState extends State<PaymentsScreen> {
-  List<Map<String, dynamic>> payments = [
-    {
-      'student': 'John Doe',
-      'amount': '5000',
-      'date': '2024-01-15',
-      'status': 'Paid',
-      'method': 'UPI',
-    },
-    {
-      'student': 'Sarah Smith',
-      'amount': '4500',
-      'date': '2024-01-14',
-      'status': 'Paid',
-      'method': 'Cash',
-    },
-    {
-      'student': 'Mike Johnson',
-      'amount': '5000',
-      'date': '2024-01-10',
-      'status': 'Pending',
-      'method': 'Bank Transfer',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Payments Management'),
-        backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildSummaryCard(
-                    'Total Collected',
-                    '₹9,500',
-                    Icons.account_balance_wallet,
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSummaryCard(
-                    'Pending',
-                    '₹5,000',
-                    Icons.pending_actions,
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by student name...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: payments.length,
-              itemBuilder: (context, index) {
-                final payment = payments[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: payment['status'] == 'Paid'
-                          ? Colors.green
-                          : Colors.orange,
-                      child: Icon(
-                        payment['status'] == 'Paid'
-                            ? Icons.check_circle
-                            : Icons.pending,
-                        color: Colors.white,
-                      ),
-                    ),
-                    title: Text(
-                      payment['student'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Date: ${payment['date']}'),
-                        Text(
-                          'Method: ${payment['method']}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '₹${payment['amount']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: payment['status'] == 'Paid'
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            payment['status'],
-                            style: TextStyle(
-                              color: payment['status'] == 'Paid'
-                                  ? Colors.green
-                                  : Colors.orange,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _showPaymentDetails(context, payment),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-        foregroundColor: Colors.white,
-        onPressed: () => _showAddPaymentDialog(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Payment'),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    String title,
-    String amount,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 32, color: color),
-          const SizedBox(height: 8),
-          Text(
-            amount,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-        ],
-      ),
-    );
-  }
-
-  void _showPaymentDetails(BuildContext context, Map<String, dynamic> payment) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Payment Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDetailRow('Student', payment['student']),
-            _buildDetailRow('Amount', '₹${payment['amount']}'),
-            _buildDetailRow('Date', payment['date']),
-            _buildDetailRow('Status', payment['status']),
-            _buildDetailRow('Method', payment['method']),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          Text(value, style: const TextStyle(fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  void _showAddPaymentDialog(BuildContext context) {
-    final studentController = TextEditingController();
-    final amountController = TextEditingController();
-    String selectedMethod = 'Cash';
-    String selectedStatus = 'Paid';
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add New Payment'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: studentController,
-                  decoration: const InputDecoration(
-                    labelText: 'Student Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Amount (₹)',
-                    border: OutlineInputBorder(),
-                    prefixText: '₹',
-                  ),
-                ),
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Payment Method',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: selectedMethod,
-                  items: ['Cash', 'UPI', 'Bank Transfer', 'Card'].map((
-                    String value,
-                  ) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setDialogState(() {
-                        selectedMethod = newValue;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: selectedStatus,
-                  items: ['Paid', 'Pending'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setDialogState(() {
-                        selectedStatus = newValue;
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                if (studentController.text.isNotEmpty &&
-                    amountController.text.isNotEmpty) {
-                  setState(() {
-                    payments.add({
-                      'student': studentController.text,
-                      'amount': amountController.text,
-                      'date': DateTime.now().toString().split(' ')[0],
-                      'status': selectedStatus,
-                      'method': selectedMethod,
-                    });
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Payment added successfully!'),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // -----------------------------------------------------------------------------
 // SEND NOTIFICATION SCREEN (Keep existing)
@@ -593,8 +225,33 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
   String _selectedTarget = 'All Users';
+  String? _selectedClassId;
+  List<Map<String, dynamic>> _classes = [];
   bool _isSending = false;
   final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Classes')
+          .orderBy('name')
+          .get();
+      setState(() {
+        _classes = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {'id': doc.id, 'name': data['name'] ?? 'Unnamed Class'};
+        }).toList();
+      });
+    } catch (e) {
+      print('Error loading classes: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -608,6 +265,13 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    if (_selectedTarget == 'Individual Classes' && _selectedClassId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a class')));
       return;
     }
 
@@ -628,9 +292,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             senderName: 'Admin',
           );
           break;
-        case 'Students':
+        case 'Parents Only':
           await _notificationService.sendRoleNotification(
-            role: 'Student',
+            role: 'Parent',
             title: _titleController.text.trim(),
             message: _bodyController.text.trim(),
             type: NotificationType.announcement,
@@ -638,35 +302,16 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             senderName: 'Admin',
           );
           break;
-        case 'Teachers':
-          await _notificationService.sendRoleNotification(
-            role: 'Teacher',
-            title: _titleController.text.trim(),
-            message: _bodyController.text.trim(),
-            type: NotificationType.announcement,
-            senderId: senderId,
-            senderName: 'Admin',
-          );
-          break;
-        case 'Class 10':
-          // We need classId for Class 10. For now, let's assume we find it by name.
-          final classSnap = await FirebaseFirestore.instance
-              .collection('Classes')
-              .where('name', isEqualTo: '10')
-              .limit(1)
-              .get();
-
-          if (classSnap.docs.isNotEmpty) {
+        case 'Individual Classes':
+          if (_selectedClassId != null) {
             await _notificationService.sendClassNotification(
-              classId: classSnap.docs.first.id,
+              classId: _selectedClassId!,
               title: _titleController.text.trim(),
               message: _bodyController.text.trim(),
               type: NotificationType.announcement,
               senderId: senderId,
               senderName: 'Admin',
             );
-          } else {
-            throw Exception('Class 10 not found');
           }
           break;
       }
@@ -723,7 +368,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
               ),
               value: _selectedTarget,
-              items: ['All Users', 'Students', 'Teachers', 'Class 10'].map((
+              items: ['All Users', 'Parents Only', 'Individual Classes'].map((
                 String value,
               ) {
                 return DropdownMenuItem<String>(
@@ -732,10 +377,36 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 );
               }).toList(),
               onChanged: (String? newValue) {
-                if (newValue != null)
-                  setState(() => _selectedTarget = newValue);
+                if (newValue != null) {
+                  setState(() {
+                    _selectedTarget = newValue;
+                    if (newValue != 'Individual Classes') {
+                      _selectedClassId = null;
+                    }
+                  });
+                }
               },
             ),
+            if (_selectedTarget == 'Individual Classes') ...[
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Select Class',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.class_, color: Colors.blueGrey),
+                ),
+                value: _selectedClassId,
+                items: _classes.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c['id'],
+                    child: Text(c['name']),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() => _selectedClassId = newValue);
+                },
+              ),
+            ],
             const SizedBox(height: 20),
             TextField(
               controller: _titleController,
@@ -968,10 +639,6 @@ class _TeachersTabState extends State<TeachersTab> {
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Delete'),
-                      ),
                     ],
                     onSelected: (value) {
                       if (value == 'edit') {
@@ -980,8 +647,6 @@ class _TeachersTabState extends State<TeachersTab> {
                           teacher: teacher,
                           index: index,
                         );
-                      } else if (value == 'delete') {
-                        _showDeleteDialog(context, index);
                       }
                     },
                   ),
@@ -1066,32 +731,6 @@ class _TeachersTabState extends State<TeachersTab> {
               Navigator.pop(context);
             },
             child: Text(teacher == null ? 'Add' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Teacher'),
-        content: const Text('Are you sure you want to delete this teacher?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                teachers.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Delete'),
           ),
         ],
       ),

@@ -6,9 +6,9 @@ import 'package:studyzee/features/parent/home1/all_teachers_screen.dart';
 import 'package:studyzee/features/parent/home1/fees_structure.dart';
 import 'package:studyzee/features/parent/home1/parent_attenttends_screen.dart';
 import 'package:studyzee/features/parent/home1/parent_student_screen.dart';
-import 'package:studyzee/features/student/attendance/attendance_screen.dart';
-import 'package:studyzee/features/student/fees/fees_screen.dart';
-import 'package:studyzee/features/student/progress/progress_screen.dart';
+import 'package:studyzee/core/services/notification_service.dart';
+import 'package:studyzee/core/models/app_notification.dart';
+import 'package:intl/intl.dart';
 
 // Parent Profile Update Screen
 class ParentProfileUpdateScreen extends StatefulWidget {
@@ -603,6 +603,7 @@ class _Home1ScreenState extends State<Home1Screen> {
   bool _isLoading = true;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
@@ -686,29 +687,43 @@ class _Home1ScreenState extends State<Home1Screen> {
                   _showNotificationsBottomSheet(context);
                 },
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: const Text(
-                    '3',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+              StreamBuilder<List<AppNotification>>(
+                stream: _notificationService.getNotifications(
+                  _auth.currentUser?.uid ?? '',
                 ),
+                builder: (context, snapshot) {
+                  final notifications = snapshot.data ?? [];
+                  final unreadCount = notifications
+                      .where((n) => !n.isRead)
+                      .length;
+
+                  if (unreadCount == 0) return const SizedBox();
+
+                  return Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -841,7 +856,7 @@ class _Home1ScreenState extends State<Home1Screen> {
                           () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(   
+                              MaterialPageRoute(
                                 builder: (context) => const AllTeachersScreen(),
                               ),
                             );
@@ -920,6 +935,8 @@ class _Home1ScreenState extends State<Home1Screen> {
                 color: Colors.white,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -928,47 +945,25 @@ class _Home1ScreenState extends State<Home1Screen> {
   }
 
   void _showNotificationsBottomSheet(BuildContext context) {
-    final notifications = [
-      {
-        'title': 'New Assignment',
-        'message': 'Mathematics homework due on Oct 15',
-        'icon': Icons.assignment,
-        'color': Colors.blue,
-        'time': '2 hours ago',
-      },
-      {
-        'title': 'Exam Schedule',
-        'message': 'Science exam scheduled for Oct 20',
-        'icon': Icons.event,
-        'color': Colors.orange,
-        'time': '5 hours ago',
-      },
-      {
-        'title': 'Payment Reminder',
-        'message': 'School fees due by Oct 31',
-        'icon': Icons.payment,
-        'color': Colors.red,
-        'time': '1 day ago',
-      },
-    ];
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final notificationService = NotificationService();
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
           ),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
@@ -979,82 +974,151 @@ class _Home1ScreenState extends State<Home1Screen> {
                     'Notifications',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () =>
+                            notificationService.markAllAsRead(user.uid),
+                        child: const Text('Mark all as read'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             const Divider(),
             Expanded(
-              child: ListView.builder(
-                itemCount: notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = notifications[index];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: (notification['color'] as Color).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: (notification['color'] as Color).withOpacity(
-                          0.3,
-                        ),
+              child: StreamBuilder<List<AppNotification>>(
+                stream: notificationService.getNotifications(user.uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  final notifications = snapshot.data ?? [];
+
+                  if (notifications.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.notifications_off_outlined,
+                            size: 64,
+                            color: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No notifications yet',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        ],
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      final Color color = _getNotificationColor(
+                        notification.type,
+                      );
+
+                      return InkWell(
+                        onTap: () {
+                          notificationService.markAsRead(
+                            user.uid,
+                            notification.id,
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: notification['color'] as Color,
-                            shape: BoxShape.circle,
+                            color: notification.isRead
+                                ? Colors.white
+                                : color.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: notification.isRead
+                                  ? Colors.grey.shade200
+                                  : color.withOpacity(0.2),
+                            ),
                           ),
-                          child: Icon(
-                            notification['icon'] as IconData,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                notification['title'] as String,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _getNotificationIcon(notification.type),
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                notification['message'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      notification.title,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: notification.isRead
+                                            ? FontWeight.normal
+                                            : FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      notification.message,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _formatTimeAgo(notification.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                notification['time'] as String,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade500,
+                              if (!notification.isRead)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),
@@ -1063,6 +1127,50 @@ class _Home1ScreenState extends State<Home1Screen> {
         ),
       ),
     );
+  }
+
+  IconData _getNotificationIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.assignment:
+        return Icons.assignment;
+      case NotificationType.exam:
+        return Icons.quiz;
+      case NotificationType.fee:
+        return Icons.payment;
+      case NotificationType.attendance:
+        return Icons.access_time;
+      case NotificationType.announcement:
+        return Icons.announcement;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getNotificationColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.assignment:
+        return Colors.blue;
+      case NotificationType.exam:
+        return Colors.purple;
+      case NotificationType.fee:
+        return Colors.orange;
+      case NotificationType.attendance:
+        return Colors.red;
+      case NotificationType.announcement:
+        return Colors.green;
+      default:
+        return const Color(0xFF7DB8C5);
+    }
+  }
+
+  String _formatTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return DateFormat('MMM dd').format(date);
   }
 }
 

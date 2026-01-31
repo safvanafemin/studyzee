@@ -260,18 +260,6 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                         _showChangePasswordDialog();
                       },
                     ),
-                    _buildProfileActionItem(
-                      Icons.notifications_outlined,
-                      'Notification Settings',
-                      () {
-                        // Use the current context safely
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Notification settings'),
-                          ),
-                        );
-                      },
-                    ),
                     _buildProfileActionItem(Icons.logout, 'Logout', () {
                       _showLogoutDialog();
                     }, isDestructive: true),

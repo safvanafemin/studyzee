@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:studyzee/features/admin/student/addstudent_screen.dart';
 
-
 class StudentsTab extends StatefulWidget {
   const StudentsTab({super.key});
 
@@ -62,15 +61,11 @@ class _StudentsTabState extends State<StudentsTab> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(
-                  child: Text('Error: ${snapshot.error}'),
-                );
+                return Center(child: Text('Error: ${snapshot.error}'));
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -78,26 +73,16 @@ class _StudentsTabState extends State<StudentsTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.school_outlined,
-                        size: 80,
-                        color: Colors.grey,
-                      ),
+                      Icon(Icons.school_outlined, size: 80, color: Colors.grey),
                       SizedBox(height: 16),
                       Text(
                         'No students found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Add your first student to get started!',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -107,14 +92,18 @@ class _StudentsTabState extends State<StudentsTab> {
               // Filter students based on search query
               final filteredDocs = snapshot.data!.docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                final studentName =
-                    (data['studentName'] ?? '').toString().toLowerCase();
-                final studentEmail =
-                    (data['studentEmail'] ?? '').toString().toLowerCase();
-                final className =
-                    (data['className'] ?? '').toString().toLowerCase();
-                final parentName =
-                    (data['parentName'] ?? '').toString().toLowerCase();
+                final studentName = (data['studentName'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final studentEmail = (data['studentEmail'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final className = (data['className'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final parentName = (data['parentName'] ?? '')
+                    .toString()
+                    .toLowerCase();
 
                 return studentName.contains(_searchQuery) ||
                     studentEmail.contains(_searchQuery) ||
@@ -157,9 +146,7 @@ class _StudentsTabState extends State<StudentsTab> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => _showStudentDetails(context, docId, student),
         borderRadius: BorderRadius.circular(12),
@@ -194,11 +181,7 @@ class _StudentsTabState extends State<StudentsTab> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.class_,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.class_, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -214,11 +197,7 @@ class _StudentsTabState extends State<StudentsTab> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.email,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.email, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -309,27 +288,14 @@ class _StudentsTabState extends State<StudentsTab> {
   }
 
   void _navigateToAddStudent(BuildContext context) async {
-    // Uncomment when you have the AddEditStudentScreen imported
-    /*
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const AddEditStudentScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const AddEditStudentScreen()),
     );
 
     if (result == true && mounted) {
       // Student was added successfully
     }
-    */
-    
-    // Temporary message - remove this when implementing navigation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please import AddEditStudentScreen to enable navigation'),
-        backgroundColor: Colors.orange,
-      ),
-    );
   }
 
   void _navigateToEditStudent(
@@ -337,30 +303,17 @@ class _StudentsTabState extends State<StudentsTab> {
     String docId,
     Map<String, dynamic> studentData,
   ) async {
-    // Uncomment when you have the AddEditStudentScreen imported
-    /*
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddEditStudentScreen(
-          studentId: docId,
-          studentData: studentData,
-        ),
+        builder: (context) =>
+            AddEditStudentScreen(studentId: docId, studentData: studentData),
       ),
     );
 
     if (result == true && mounted) {
       // Student was updated successfully
     }
-    */
-    
-    // Temporary message - remove this when implementing navigation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please import AddEditStudentScreen to enable navigation'),
-        backgroundColor: Colors.orange,
-      ),
-    );
   }
 
   void _showStudentDetails(
@@ -424,18 +377,33 @@ class _StudentsTabState extends State<StudentsTab> {
                 const SizedBox(height: 24),
                 _buildDetailSection('Student Information', [
                   _buildDetailRow(
-                      Icons.class_, 'Class', student['className'] ?? 'N/A'),
-                  _buildDetailRow(Icons.email, 'Email',
-                      student['studentEmail'] ?? 'N/A'),
-                  _buildDetailRow(Icons.home, 'Address',
-                      student['studentAddress'] ?? 'N/A'),
+                    Icons.class_,
+                    'Class',
+                    student['className'] ?? 'N/A',
+                  ),
+                  _buildDetailRow(
+                    Icons.email,
+                    'Email',
+                    student['studentEmail'] ?? 'N/A',
+                  ),
+                  _buildDetailRow(
+                    Icons.home,
+                    'Address',
+                    student['studentAddress'] ?? 'N/A',
+                  ),
                 ]),
                 const SizedBox(height: 20),
                 _buildDetailSection('Parent/Guardian Information', [
-                  _buildDetailRow(Icons.person_outline, 'Name',
-                      student['parentName'] ?? 'N/A'),
-                  _buildDetailRow(Icons.email_outlined, 'Email',
-                      student['parentEmail'] ?? 'N/A'),
+                  _buildDetailRow(
+                    Icons.person_outline,
+                    'Name',
+                    student['parentName'] ?? 'N/A',
+                  ),
+                  _buildDetailRow(
+                    Icons.email_outlined,
+                    'Email',
+                    student['parentEmail'] ?? 'N/A',
+                  ),
                 ]),
                 const SizedBox(height: 24),
                 Row(
@@ -443,18 +411,18 @@ class _StudentsTabState extends State<StudentsTab> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                         Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddEditStudentScreen(),
-                    ),
-                  );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AddEditStudentScreen(),
+                            ),
+                          );
                         },
                         icon: const Icon(Icons.edit),
                         label: const Text('Edit'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromARGB(255, 2, 18, 69),
+                          backgroundColor: const Color.fromARGB(255, 2, 18, 69),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -466,11 +434,16 @@ class _StudentsTabState extends State<StudentsTab> {
                         onPressed: () {
                           Navigator.pop(context);
                           _showDeleteDialog(
-                              context, docId, student['studentName'] ?? '');
+                            context,
+                            docId,
+                            student['studentName'] ?? '',
+                          );
                         },
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        label: const Text('Delete',
-                            style: TextStyle(color: Colors.red)),
+                        label: const Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.red),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -519,10 +492,7 @@ class _StudentsTabState extends State<StudentsTab> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -541,7 +511,10 @@ class _StudentsTabState extends State<StudentsTab> {
   }
 
   void _showDeleteDialog(
-      BuildContext context, String docId, String studentName) {
+    BuildContext context,
+    String docId,
+    String studentName,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -207,8 +207,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
   bool _isRefreshing = false;
   String _studentClassId = '';
   String _studentClassName = '';
-
-  @override
+  List<String> _studentSubjects = [];
   void initState() {
     super.initState();
     _fadeController = AnimationController(
@@ -241,15 +240,17 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         final userData = userDoc.data();
-        _studentClassId = userData?['classId'] ?? '';
-        _studentClassName = userData?['className'] ?? '';
-
-        // If student has a class, set selectedClass to 'My Class'
-        if (_studentClassName.isNotEmpty) {
-          setState(() {
-            selectedClass = 'My Class';
-          });
-        }
+        setState(() {
+          _studentClassId = userData?['classId'] ?? '';
+          _studentClassName = userData?['className'] ?? '';
+          _studentSubjects = List<String>.from(userData?['subjects'] ?? []);
+        });
+      }
+      // If student has a class, set selectedClass to 'My Class'
+      if (_studentClassName.isNotEmpty) {
+        setState(() {
+          selectedClass = 'My Class';
+        });
       }
 
       // Load all classes
@@ -421,13 +422,13 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
     return allNotes.where((note) {
       // Handle "My Class" filter
       if (selectedClass == 'My Class') {
-        final matchesMyClass =
-            note.classId == _studentClassId ||
-            _normalizeClassName(note.className) ==
-                _normalizeClassName(_studentClassName) ||
-            _normalizeClassName(note.displayClassName) ==
-                _normalizeClassName(_studentClassName);
-        return matchesMyClass && _matchesSearch(note);
+        final matchesMyClass = note.classId == _studentClassId;
+        final matchesSubject =
+            _studentSubjects.isEmpty ||
+            _studentSubjects.any(
+              (s) => s.toLowerCase() == note.subject.toLowerCase(),
+            );
+        return matchesMyClass && matchesSubject && _matchesSearch(note);
       }
 
       if (selectedClass == 'All Classes') {

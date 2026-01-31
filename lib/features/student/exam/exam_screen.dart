@@ -45,7 +45,10 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
             StreamBuilder<QuerySnapshot>(
               stream: _firestore
                   .collection('exams')
-                  .where('status', isEqualTo: 'upcoming')
+                  .where(
+                    'status',
+                    whereIn: ['upcoming', 'started', 'submitted'],
+                  )
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

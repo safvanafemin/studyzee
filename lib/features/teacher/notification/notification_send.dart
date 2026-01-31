@@ -16,6 +16,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
+  String _teacherName = 'Teacher';
 
   // For recipient selection
   String _recipientType = 'class'; // 'class', 'student', 'parent', 'all'
@@ -37,9 +38,26 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   @override
   void initState() {
     super.initState();
+    _loadTeacherData();
     _loadClasses();
     _loadStudents();
     _loadParents();
+  }
+
+  Future<void> _loadTeacherData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          setState(() {
+            _teacherName = doc.data()?['name'] ?? 'Teacher';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading teacher data: $e');
+    }
   }
 
   Future<void> _loadClasses() async {
@@ -69,9 +87,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Future<void> _loadStudents() async {
     try {
       final snapshot = await _firestore
-          .collection('Students')
-          .where('status', isEqualTo: 1)
-          .orderBy('studentName')
+          .collection('users')
+          .where('role', isEqualTo: 'Student')
+          .orderBy('name')
           .get();
 
       setState(() {
@@ -79,7 +97,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           final data = doc.data();
           return {
             'id': doc.id,
-            'name': data['studentName'] ?? '',
+            'name': data['name'] ?? '',
             'classId': data['classId'],
             'className': data['className'],
             'parentId': data['parentId'],
@@ -95,9 +113,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Future<void> _loadParents() async {
     try {
       final snapshot = await _firestore
-          .collection('Parents')
-          .where('status', isEqualTo: 1)
-          .orderBy('parentName')
+          .collection('users')
+          .where('role', isEqualTo: 'Parent')
+          .orderBy('name')
           .get();
 
       setState(() {
@@ -105,8 +123,8 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           final data = doc.data();
           return {
             'id': doc.id,
-            'name': data['parentName'] ?? '',
-            'email': data['parentEmail'] ?? '',
+            'name': data['name'] ?? '',
+            'email': data['email'] ?? '',
           };
         }).toList();
       });
@@ -148,7 +166,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       final notificationService = NotificationService();
       final user = FirebaseAuth.instance.currentUser;
       final senderId = user?.uid ?? 'unknown';
-      final senderName = 'Teacher'; // Ideally get from user profile
+      final senderName = _teacherName;
 
       switch (_recipientType) {
         case 'class':
