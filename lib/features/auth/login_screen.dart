@@ -182,32 +182,32 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          _handleForgotPassword();
-                        },
-                        child: const Text("Forgot your password?"),
-                      ),
+                      // TextButton(
+                      //   onPressed: () {
+                      //     _handleForgotPassword();
+                      //   },
+                      //   child: const Text("Forgot your password?"),
+                      // ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SignupScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  "Don't have an account? Sign up",
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 20),
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //         builder: (contex96t) => const SignupScreen(),
+              //       ),
+              //     );
+              //   },
+              //   child: const Text(
+              //     "Don't have an account? Sign up",
+              //     style: TextStyle(color: Colors.white, fontSize: 14),
+              //   ),
+              // ),
+              // const SizedBox(height: 20),
             ],
           ),
         ),
