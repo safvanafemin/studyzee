@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:studyzee/features/admin/home/home_screen.dart';
+
+import 'package:studyzee/features/teacher/notification/notification_send.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -12,7 +14,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  int _selectedFilter = 0; // 0: All, 1: Today, 2: Class, 3: Student, 4: Parent
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -21,103 +23,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Notifications'),
         backgroundColor: const Color.fromARGB(255, 2, 18, 69),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SendNotificationScreen(),
-                ),
-              );
-            },
-            tooltip: 'Send New Notification',
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          // Filter Section
-          _buildFilterSection(),
-          const SizedBox(height: 8),
-          
-          // Notifications List
-          Expanded(
-            child: _buildNotificationsList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      color: Colors.grey[50],
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildFilterChip('All', 0),
-            const SizedBox(width: 8),
-            _buildFilterChip('Today', 1),
-            const SizedBox(width: 8),
-            _buildFilterChip('Class', 2),
-            const SizedBox(width: 8),
-            _buildFilterChip('Student', 3),
-            const SizedBox(width: 8),
-            _buildFilterChip('Parent', 4),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, int index) {
-    return FilterChip(
-      label: Text(label),
-      selected: _selectedFilter == index,
-      onSelected: (selected) {
-        setState(() {
-          _selectedFilter = selected ? index : 0;
-        });
-      },
-      backgroundColor: Colors.white,
-      selectedColor: const Color.fromARGB(255, 2, 18, 69),
-      labelStyle: TextStyle(
-        color: _selectedFilter == index ? Colors.white : Colors.black,
-      ),
-      side: BorderSide(
-        color: _selectedFilter == index
-            ? const Color.fromARGB(255, 2, 18, 69)
-            : Colors.grey[300]!,
+      body: _buildNotificationsList(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SendNotificationScreen(),
+            ),
+          );
+        },
+        backgroundColor: const Color.fromARGB(255, 2, 18, 69),
+        child: const Icon(Icons.send),
       ),
     );
   }
 
   Widget _buildNotificationsList() {
-    Query query = _firestore.collection('Notifications').orderBy('createdAt', descending: true);
-
-    // Apply filters
-    if (_selectedFilter == 1) {
-      // Today's notifications
-      DateTime now = DateTime.now();
-      DateTime startOfDay = DateTime(now.year, now.month, now.day);
-      query = query.where('createdAt', isGreaterThanOrEqualTo: startOfDay);
-    } else if (_selectedFilter == 2) {
-      // Class notifications
-      query = query.where('targetType', whereIn: ['class', 'all_classes']);
-    } else if (_selectedFilter == 3) {
-      // Student notifications
-      query = query.where('targetType', whereIn: ['student', 'all_students']);
-    } else if (_selectedFilter == 4) {
-      // Parent notifications
-      query = query.where('targetType', whereIn: ['parent', 'all_parents']);
+    final user = _auth.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Please login to view notifications'));
     }
 
     return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
+      stream: _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -159,7 +94,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           itemBuilder: (context, index) {
             final doc = notifications[index];
             final data = doc.data() as Map<String, dynamic>;
-            
+
             return _buildNotificationCard(data);
           },
         );
@@ -170,29 +105,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationCard(Map<String, dynamic> data) {
     final title = data['title'] ?? 'No Title';
     final message = data['message'] ?? '';
-    final createdAt = (data['createdAt'] as Timestamp).toDate();
-    final targetType = data['targetType'] ?? 'general';
-    final targetName = data['targetName'] ?? '';
-    
-    // Get icon based on target type
+    final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final type = data['type'] ?? 'general';
+    final senderName = data['senderName'] ?? 'System';
+
     IconData icon;
     Color iconColor;
-    
-    switch (targetType) {
-      case 'class':
-      case 'all_classes':
-        icon = Icons.class_;
+
+    switch (type.toString()) {
+      case 'announcement':
+        icon = Icons.campaign;
+        iconColor = Colors.orange;
+        break;
+      case 'assignment':
+        icon = Icons.assignment;
         iconColor = Colors.blue;
         break;
-      case 'student':
-      case 'all_students':
-        icon = Icons.school;
+      case 'attendance':
+        icon = Icons.event_available;
         iconColor = Colors.green;
-        break;
-      case 'parent':
-      case 'all_parents':
-        icon = Icons.family_restroom;
-        iconColor = Colors.orange;
         break;
       default:
         icon = Icons.notifications;
@@ -235,7 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        _getTargetLabel(targetType, targetName),
+                        'From: $senderName',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -257,8 +188,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Text(
               message,
               style: const TextStyle(fontSize: 14),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
             Row(
@@ -278,24 +207,5 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       ),
     );
-  }
-
-  String _getTargetLabel(String targetType, String targetName) {
-    switch (targetType) {
-      case 'class':
-        return 'Class: $targetName';
-      case 'all_classes':
-        return 'All Classes';
-      case 'student':
-        return 'Student: $targetName';
-      case 'all_students':
-        return 'All Students';
-      case 'parent':
-        return 'Parent: $targetName';
-      case 'all_parents':
-        return 'All Parents';
-      default:
-        return 'General';
-    }
   }
 }

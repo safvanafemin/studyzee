@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:studyzee/features/admin/home/fee_management_screen.dart';
 import 'package:studyzee/features/admin/home/student_payment_screen.dart';
 import 'package:studyzee/features/admin/home/teacher_manage_section.dart';
@@ -9,6 +10,7 @@ import 'package:studyzee/features/auth/login_screen.dart';
 import '../class/classmanage_screen.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/models/app_notification.dart';
+import 'notification_send.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -214,293 +216,188 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 // SEND NOTIFICATION SCREEN (Keep existing)
 // -----------------------------------------------------------------------------
 
-class SendNotificationScreen extends StatefulWidget {
-  const SendNotificationScreen({super.key});
 
-  @override
-  State<SendNotificationScreen> createState() => _SendNotificationScreenState();
-}
-
-class _SendNotificationScreenState extends State<SendNotificationScreen> {
-  final _titleController = TextEditingController();
-  final _bodyController = TextEditingController();
-  String _selectedTarget = 'All Users';
-  String? _selectedClassId;
-  List<Map<String, dynamic>> _classes = [];
-  bool _isSending = false;
-  final NotificationService _notificationService = NotificationService();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadClasses();
-  }
-
-  Future<void> _loadClasses() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Classes')
-          .orderBy('name')
-          .get();
-      setState(() {
-        _classes = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {'id': doc.id, 'name': data['name'] ?? 'Unnamed Class'};
-        }).toList();
-      });
-    } catch (e) {
-      print('Error loading classes: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _bodyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendNotification() async {
-    if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
-      return;
-    }
-
-    if (_selectedTarget == 'Individual Classes' && _selectedClassId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a class')));
-      return;
-    }
-
-    setState(() => _isSending = true);
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final senderId = user?.uid ?? 'admin';
-
-      switch (_selectedTarget) {
-        case 'All Users':
-          await _notificationService.sendRoleNotification(
-            role: 'Both',
-            title: _titleController.text.trim(),
-            message: _bodyController.text.trim(),
-            type: NotificationType.announcement,
-            senderId: senderId,
-            senderName: 'Admin',
-          );
-          break;
-        case 'Parents Only':
-          await _notificationService.sendRoleNotification(
-            role: 'Parent',
-            title: _titleController.text.trim(),
-            message: _bodyController.text.trim(),
-            type: NotificationType.announcement,
-            senderId: senderId,
-            senderName: 'Admin',
-          );
-          break;
-        case 'Individual Classes':
-          if (_selectedClassId != null) {
-            await _notificationService.sendClassNotification(
-              classId: _selectedClassId!,
-              title: _titleController.text.trim(),
-              message: _bodyController.text.trim(),
-              type: NotificationType.announcement,
-              senderId: senderId,
-              senderName: 'Admin',
-            );
-          }
-          break;
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Notification sent successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sending notification: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSending = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Send New Notification'),
-        backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Compose Message',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 2, 18, 69),
-              ),
-            ),
-            const Divider(height: 30),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Target Audience',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
-              ),
-              value: _selectedTarget,
-              items: ['All Users', 'Parents Only', 'Individual Classes'].map((
-                String value,
-              ) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedTarget = newValue;
-                    if (newValue != 'Individual Classes') {
-                      _selectedClassId = null;
-                    }
-                  });
-                }
-              },
-            ),
-            if (_selectedTarget == 'Individual Classes') ...[
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Select Class',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.class_, color: Colors.blueGrey),
-                ),
-                value: _selectedClassId,
-                items: _classes.map((c) {
-                  return DropdownMenuItem<String>(
-                    value: c['id'],
-                    child: Text(c['name']),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() => _selectedClassId = newValue);
-                },
-              ),
-            ],
-            const SizedBox(height: 20),
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Notification Title (e.g., Important Notice)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.title),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _bodyController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Message Body',
-                alignLabelWithHint: true,
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton.icon(
-              icon: _isSending
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.send),
-              label: Text(
-                _isSending ? 'Sending...' : 'Send Notification Now',
-                style: const TextStyle(fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 40, 167, 69),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: _isSending ? null : _sendNotification,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // -----------------------------------------------------------------------------
 // TAB WIDGETS (Keep existing DashboardTab, StudentsTab, TeachersTab)
 // -----------------------------------------------------------------------------
 
-class DashboardTab extends StatelessWidget {
+class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
 
   @override
+  State<DashboardTab> createState() => _DashboardTabState();
+}
+
+class _DashboardTabState extends State<DashboardTab> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = true;
+  int _studentCount = 0;
+  int _teacherCount = 0;
+  int _classCount = 0;
+  double _totalPayments = 0.0;
+  List<Map<String, String>> _recentActivities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // Run queries in parallel
+      final results = await Future.wait([
+        _firestore.collection('users').where('role', isEqualTo: 'Student').count().get(),
+        _firestore.collection('users').where('role', isEqualTo: 'Teacher').count().get(),
+        _firestore.collection('Classes').count().get(),
+        _firestore.collection('FeePayments').get(), // Need to sum amounts
+        _firestore.collection('users')
+            .orderBy('createdAt', descending: true)
+            .limit(5)
+            .get(), // Recent users
+      ]);
+
+      int studentCount = (results[0] as AggregateQuerySnapshot).count ?? 0;
+      int teacherCount = (results[1] as AggregateQuerySnapshot).count ?? 0;
+      int classCount = (results[2] as AggregateQuerySnapshot).count ?? 0;
+
+      // Calculate total payments
+      double totalPayments = 0.0;
+      final paymentDocs = (results[3] as QuerySnapshot).docs;
+      for (var doc in paymentDocs) {
+        final data = doc.data() as Map<String, dynamic>;
+        totalPayments += (data['amount'] ?? 0.0) as double;
+      }
+
+      // Process recent activities
+      List<Map<String, String>> activities = [];
+      final recentUsers = (results[4] as QuerySnapshot).docs;
+      
+      for (var doc in recentUsers) {
+        final data = doc.data() as Map<String, dynamic>;
+        final name = data['name'] ?? 'Unknown User';
+        final role = data['role'] ?? 'User';
+        final createdAt = data['createdAt'] as Timestamp?;
+        final timeStr = createdAt != null 
+            ? _getTimeAgo(createdAt.toDate()) 
+            : 'Recently';
+            
+        activities.add({
+          'title': 'New $role joined: $name',
+          'time': timeStr,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _studentCount = studentCount;
+          _teacherCount = teacherCount;
+          _classCount = classCount;
+          _totalPayments = totalPayments;
+          _recentActivities = activities;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _getTimeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inDays > 0) return '${diff.inDays} days ago';
+    if (diff.inHours > 0) return '${diff.inHours} hours ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} minutes ago';
+    return 'Just now';
+  }
+
+  String _formatCurrency(double amount) {
+    if (amount >= 1000000) {
+      return '₹${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      return '₹${(amount / 1000).toStringAsFixed(1)}K';
+    } else {
+      return NumberFormat.currency(symbol: '₹', decimalDigits: 0).format(amount);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Overview',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            children: [
-              _buildStatCard('Students', '150', Icons.school, Colors.blue),
-              _buildStatCard('Teachers', '25', Icons.person, Colors.green),
-              _buildStatCard('Classes', '12', Icons.class_, Colors.purple),
-              _buildStatCard('Payments', '₹95K', Icons.payment, Colors.orange),
-            ],
-          ),
-          const SizedBox(height: 30),
-          const Text(
-            'Recent Activities',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15),
-          _buildActivityItem('New student enrolled: John Doe', '2 hours ago'),
-          _buildActivityItem('Teacher updated: Jane Smith', '5 hours ago'),
-          _buildActivityItem('New class created: Class 10-A', '1 day ago'),
-        ],
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Overview',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildStatCard(
+                  'Students', 
+                  _studentCount.toString(), 
+                  Icons.school, 
+                  Colors.blue
+                ),
+                _buildStatCard(
+                  'Teachers', 
+                  _teacherCount.toString(), 
+                  Icons.person, 
+                  Colors.green
+                ),
+                _buildStatCard(
+                  'Classes', 
+                  _classCount.toString(), 
+                  Icons.class_, 
+                  Colors.purple
+                ),
+                _buildStatCard(
+                  'Payments', 
+                  _formatCurrency(_totalPayments), 
+                  Icons.payment, 
+                  Colors.orange
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            const Text(
+              'Recent Activities',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            if (_recentActivities.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(
+                    child: Text('No recent activities'),
+                  ),
+                ),
+              )
+            else
+              ..._recentActivities.map((activity) => 
+                _buildActivityItem(activity['title']!, activity['time']!)),
+          ],
+        ),
       ),
     );
   }
@@ -555,185 +452,4 @@ class DashboardTab extends StatelessWidget {
   }
 }
 
-class TeachersTab extends StatefulWidget {
-  const TeachersTab({super.key});
 
-  @override
-  State<TeachersTab> createState() => _TeachersTabState();
-}
-
-class _TeachersTabState extends State<TeachersTab> {
-  List<Map<String, dynamic>> teachers = [
-    {
-      'name': 'Dr. Robert Brown',
-      'subject': 'Mathematics',
-      'email': 'robert@example.com',
-      'phone': '1231231234',
-    },
-    {
-      'name': 'Ms. Emily Davis',
-      'subject': 'Science',
-      'email': 'emily@example.com',
-      'phone': '4564564567',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search teachers...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FloatingActionButton(
-                backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-                onPressed: () => _showAddEditDialog(context),
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: teachers.length,
-            itemBuilder: (context, index) {
-              final teacher = teachers[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green,
-                    child: Text(
-                      teacher['name'][0],
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  title: Text(
-                    teacher['name'],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(teacher['subject']),
-                      Text(
-                        teacher['email'],
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton(
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showAddEditDialog(
-                          context,
-                          teacher: teacher,
-                          index: index,
-                        );
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddEditDialog(
-    BuildContext context, {
-    Map<String, dynamic>? teacher,
-    int? index,
-  }) {
-    final nameController = TextEditingController(text: teacher?['name'] ?? '');
-    final subjectController = TextEditingController(
-      text: teacher?['subject'] ?? '',
-    );
-    final emailController = TextEditingController(
-      text: teacher?['email'] ?? '',
-    );
-    final phoneController = TextEditingController(
-      text: teacher?['phone'] ?? '',
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(teacher == null ? 'Add Teacher' : 'Edit Teacher'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: subjectController,
-                decoration: const InputDecoration(
-                  labelText: 'Subject',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 2, 18, 69),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(teacher == null ? 'Add' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-}

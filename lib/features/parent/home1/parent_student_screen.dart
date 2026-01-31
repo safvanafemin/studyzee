@@ -346,6 +346,7 @@ class _ParentStudentProgressScreenState
                   child: DropdownButton<Map<String, dynamic>>(
                     value: _selectedChild,
                     isExpanded: true,
+                    icon: const SizedBox.shrink(),
                     underline: const SizedBox.shrink(),
                     items: _children.map((child) {
                       return DropdownMenuItem<Map<String, dynamic>>(
@@ -892,7 +893,7 @@ class _ParentStudentProgressScreenState
       }).toList(),
     );
   }
-  
+
   Widget _buildStatBox(String label, String value, Color color) {
     return Column(
       children: [

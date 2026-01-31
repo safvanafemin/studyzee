@@ -238,9 +238,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
       final absentCount = _attendanceStatus.values
           .where((s) => s == 'Absent')
           .length;
-      final leaveCount = _attendanceStatus.values
-          .where((s) => s == 'Leave')
-          .length;
+
 
       // Save to Firestore - class attendance record
       await _firestore
@@ -260,7 +258,6 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
             'totalStudents': totalStudents,
             'present': presentCount,
             'absent': absentCount,
-            'leave': leaveCount,
             'markedAt': timestamp,
             'updatedAt': timestamp,
           }, SetOptions(merge: true));
@@ -319,7 +316,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Attendance marked successfully! ($presentCount present, $absentCount absent, $leaveCount leave)',
+            'Attendance marked successfully! ($presentCount present, $absentCount absent)',
           ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
@@ -594,8 +591,6 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
         return Colors.green;
       case 'Absent':
         return Colors.red;
-      case 'Leave':
-        return Colors.orange;
       default:
         return Colors.grey;
     }
@@ -619,7 +614,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
             children: [
               Text('Roll No: $rollNumber'),
               const SizedBox(height: 20),
-              ...['Present', 'Absent', 'Leave'].map((status) {
+              ...['Present', 'Absent'].map((status) {
                 return RadioListTile<String>(
                   title: Text(
                     status,
@@ -642,9 +637,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                   secondary: Icon(
                     status == 'Present'
                         ? Icons.check_circle
-                        : status == 'Absent'
-                        ? Icons.cancel
-                        : Icons.airline_seat_individual_suite,
+                        : Icons.cancel,
                     color: _getStatusColor(status),
                   ),
                 );
@@ -795,7 +788,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
         .where((s) => s == 'Present')
         .length;
     final absent = _attendanceStatus.values.where((s) => s == 'Absent').length;
-    final leave = _attendanceStatus.values.where((s) => s == 'Leave').length;
+
 
     return Card(
       elevation: 2,
@@ -814,7 +807,6 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                 _buildStatCard('Total', total.toString(), Colors.blue),
                 _buildStatCard('Present', present.toString(), Colors.green),
                 _buildStatCard('Absent', absent.toString(), Colors.red),
-                _buildStatCard('Leave', leave.toString(), Colors.orange),
               ],
             ),
             const SizedBox(height: 10),
@@ -1059,7 +1051,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                 final date = data['date'] as String? ?? 'Unknown';
                 final present = data['present'] ?? 0;
                 final absent = data['absent'] ?? 0;
-                final leave = data['leave'] ?? 0;
+
                 final total = data['totalStudents'] ?? 0;
 
                 return Card(
@@ -1069,8 +1061,8 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                       backgroundColor: present == total
                           ? Colors.green
                           : present == 0
-                          ? Colors.red
-                          : Colors.orange,
+                          ? Colors.green
+                          : Colors.red,
                       child: Text(
                         DateFormat('dd').format(
                           data['dateTime'] != null
@@ -1088,7 +1080,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      'Present: $present | Absent: $absent | Leave: $leave',
+                      'Present: $present | Absent: $absent',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
@@ -1114,7 +1106,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
     final teacherName = data['teacherName'] ?? 'Unknown';
     final present = data['present'] ?? 0;
     final absent = data['absent'] ?? 0;
-    final leave = data['leave'] ?? 0;
+
     final total = data['totalStudents'] ?? 0;
     final students = data['students'] as Map<String, dynamic>? ?? {};
 
@@ -1149,11 +1141,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                     '$absent (${total > 0 ? ((absent / total) * 100).toStringAsFixed(1) : 0}%)',
                     Colors.red,
                   ),
-                  _buildSummaryRow(
-                    'Leave:',
-                    '$leave (${total > 0 ? ((leave / total) * 100).toStringAsFixed(1) : 0}%)',
-                    Colors.orange,
-                  ),
+                 
 
                   if (students.isNotEmpty) ...[
                     const SizedBox(height: 16),

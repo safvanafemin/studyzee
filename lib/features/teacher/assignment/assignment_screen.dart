@@ -1189,6 +1189,105 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
     );
   }
 
+  Future<void> _gradePendingStudent(
+    String studentId,
+    String studentName,
+    int marks,
+    String feedback,
+  ) async {
+    try {
+      await _firestore.collection('assignment_submissions').add({
+        'assignmentId': selectedAssignmentId,
+        'studentId': studentId,
+        'studentName': studentName,
+        'status': 'graded',
+        'marks': marks,
+        'feedback': feedback,
+        'submittedAt': FieldValue.serverTimestamp(),
+        'gradedAt': FieldValue.serverTimestamp(),
+        'gradedBy': _auth.currentUser?.uid,
+        'fileUrl': '',
+        'fileName': '',
+      });
+
+      await _loadAssignmentDetails(selectedAssignmentId!);
+      _showSuccess('Student graded successfully!');
+    } catch (e) {
+      print('Error grading student: $e');
+      _showError('Error grading student');
+    }
+  }
+
+  void _showPendingGradingDialog(Map<String, dynamic> student) {
+    TextEditingController marksController = TextEditingController();
+    TextEditingController feedbackController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Grade ${student['studentName']}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: marksController,
+              decoration: InputDecoration(
+                labelText: 'Marks',
+                hintText:
+                    'Enter marks out of ${_selectedAssignmentDetails?['totalMarks'] ?? 100}',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: feedbackController,
+              decoration: const InputDecoration(
+                labelText: 'Feedback',
+                hintText: 'Enter feedback',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (marksController.text.isEmpty) {
+                _showError('Please enter marks');
+                return;
+              }
+              final marks = int.tryParse(marksController.text) ?? 0;
+              if (marks < 0 ||
+                  marks > (_selectedAssignmentDetails?['totalMarks'] ?? 100)) {
+                _showError('Invalid marks');
+                return;
+              }
+
+              await _gradePendingStudent(
+                student['studentId'],
+                student['studentName'],
+                marks,
+                feedbackController.text,
+              );
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text(
+              'Submit Grade',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPendingStudentItem(Map<String, dynamic> student) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1250,6 +1349,12 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.grade, color: Colors.blue),
+            onPressed: () => _showPendingGradingDialog(student),
+            tooltip: 'Grade Student',
           ),
         ],
       ),

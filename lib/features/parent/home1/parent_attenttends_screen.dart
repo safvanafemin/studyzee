@@ -150,7 +150,6 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
 
     int totalPresent = 0;
     int totalAbsent = 0;
-    int totalLeave = 0;
     int totalDays = 0;
 
     for (var record in _attendanceRecords) {
@@ -170,9 +169,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
         case 'Absent':
           totalAbsent++;
           break;
-        case 'Leave':
-          totalLeave++;
-          break;
+
       }
     }
 
@@ -184,7 +181,6 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
       'totalDays': totalDays,
       'present': totalPresent,
       'absent': totalAbsent,
-      'leave': totalLeave,
       'attendanceRate': totalDays > 0 ? (totalPresent / totalDays) * 100 : 0,
     };
   }
@@ -287,15 +283,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Select Child',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
-          ),
-          const SizedBox(height: 12),
+
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -400,7 +388,6 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
     final totalDays = _monthlyStats['totalDays'] as int;
     final present = _monthlyStats['present'] as int;
     final absent = _monthlyStats['absent'] as int;
-    final leave = _monthlyStats['leave'] as int;
     final attendanceRate = _monthlyStats['attendanceRate'] as double;
 
     return Container(
@@ -461,7 +448,6 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
             children: [
               _buildStatItem('Present', present.toString(), Colors.green),
               _buildStatItem('Absent', absent.toString(), Colors.red),
-              _buildStatItem('Leave', leave.toString(), Colors.orange),
             ],
           ),
           const SizedBox(height: 24),
@@ -619,7 +605,6 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
             children: [
               _buildLegendItem('Present', Colors.green),
               _buildLegendItem('Absent', Colors.red),
-              _buildLegendItem('Leave', Colors.orange),
               _buildLegendItem('Holiday', Colors.grey),
             ],
           ),
@@ -791,8 +776,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
         return Icons.check_circle;
       case 'Absent':
         return Icons.cancel;
-      case 'Leave':
-        return Icons.airline_seat_individual_suite;
+
       default:
         return Icons.help;
     }
@@ -804,8 +788,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
         return Colors.green;
       case 'Absent':
         return Colors.red;
-      case 'Leave':
-        return Colors.orange;
+
       default:
         return Colors.grey;
     }

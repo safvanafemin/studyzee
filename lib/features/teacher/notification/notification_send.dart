@@ -353,7 +353,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             const SizedBox(height: 24),
 
             // Send Button
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: _isSending ? null : _sendNotification,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 2, 18, 69),
@@ -363,7 +363,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: _isSending
+              icon: _isSending
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -372,13 +372,14 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'SEND NOTIFICATION',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  : const Icon(Icons.send),
+              label: Text(
+                _isSending ? 'SENDING...' : 'SEND NOTIFICATION',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
