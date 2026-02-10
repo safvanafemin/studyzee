@@ -239,44 +239,10 @@ class _AdminTeachersScreenState extends State<AdminTeachersScreen> {
             ),
           ],
         ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-          onSelected: (value) {
-            if (value == 'edit') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      AddEditTeacherScreen(teacherData: teacher),
-                ),
-              ).then((value) {
-                if (value == true) _fetchTeachers();
-              });
-            } else if (value == 'delete') {
-              _deleteTeacher(teacher['id']);
-            }
-          },
+        trailing: IconButton(
+          onPressed: () => _deleteTeacher(teacher['id']),
+          icon: const Icon(Icons.delete, color: Colors.red),
+          tooltip: 'Delete',
         ),
         onTap: () {
           Navigator.push(

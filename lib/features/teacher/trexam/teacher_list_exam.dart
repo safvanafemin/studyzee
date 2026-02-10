@@ -271,13 +271,12 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Edit exam functionality
-                      _showEditOptions(exam);
+                      _deleteExam(exam['id']);
                     },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit'),
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
+                      backgroundColor: Colors.red,
                     ),
                   ),
                 ),
@@ -286,53 +285,6 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showEditOptions(Map<String, dynamic> exam) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Edit Exam Details'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Navigate to edit exam screen
-                  _navigateToEditExam(exam);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Delete Exam'),
-                textColor: Colors.red,
-                iconColor: Colors.red,
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteExam(exam['id']);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.close),
-                title: const Text('Cancel'),
-                onTap: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _navigateToEditExam(Map<String, dynamic> exam) {
-    // You can create an EditExamScreen similar to CreateExamWithQuestionsScreen
-    // For now, just show a message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit functionality to be implemented')),
     );
   }
 
