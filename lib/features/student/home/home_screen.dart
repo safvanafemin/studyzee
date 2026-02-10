@@ -447,6 +447,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           if (snapshot.hasError) {
+            print('Error loading notifications: ${snapshot.error}');
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
@@ -728,6 +729,7 @@ class HomePage extends StatelessWidget {
                   }
 
                   if (snapshot.hasError) {
+                    print('Error loading profile: ${snapshot.error}');
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),

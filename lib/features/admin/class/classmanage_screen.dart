@@ -18,7 +18,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
 
   String _searchQuery = '';
   Map<String, List<Map<String, dynamic>>> _classStudents = {};
-  
+
   // Add mounted flag
   bool _isMounted = false;
 
@@ -115,6 +115,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
+                print('Error loading classes: ${snapshot.error}');
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
 
@@ -634,6 +635,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                               );
                             }
                           } catch (e) {
+                            print('Error adding student: $e');
                             if (context.mounted) {
                               CustomSnackBar.show(
                                 context,
@@ -812,6 +814,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                               );
                             }
                           } catch (e) {
+                            print('Error updating student: $e');
                             if (context.mounted) {
                               CustomSnackBar.show(
                                 context,
@@ -954,6 +957,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                   );
                 }
               } catch (e) {
+                print('Error deleting student: $e');
                 if (context.mounted) {
                   Navigator.pop(context);
                   CustomSnackBar.show(
@@ -1069,6 +1073,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                   }
                 }
               } catch (e) {
+                print('Error saving class: $e');
                 if (context.mounted) {
                   CustomSnackBar.show(
                     context,
@@ -1138,6 +1143,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                   );
                 }
               } catch (e) {
+                print('Error deleting class: $e');
                 if (context.mounted) {
                   Navigator.pop(context);
                   CustomSnackBar.show(

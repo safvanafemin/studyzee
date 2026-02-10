@@ -772,6 +772,9 @@ class _TrclassScreenState extends State<TrclassScreen>
                     }
 
                     if (snapshot.hasError) {
+                      print(
+                        'Error loading recorded classes: ${snapshot.error}',
+                      );
                       return Center(child: Text('Error: ${snapshot.error}'));
                     }
 

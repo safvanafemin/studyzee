@@ -1202,6 +1202,7 @@ class _ClassScreenState extends State<ClassScreen> {
       final difference = now.difference(date);
       return difference.inDays < 7; // New if less than 7 days old
     } catch (e) {
+      print('Error checking if recently added: $e');
       return false;
     }
   }
@@ -1226,6 +1227,7 @@ class _ClassScreenState extends State<ClassScreen> {
         return '${date.day}/${date.month}/${date.year}';
       }
     } catch (e) {
+      print('Error formatting date: $e');
       return 'Recently';
     }
   }
@@ -2019,6 +2021,7 @@ class _StudentVideoPlayerScreenState extends State<StudentVideoPlayerScreen> {
       final date = (timestamp as Timestamp).toDate();
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
+      print('Error formatting date in player: $e');
       return 'Recently';
     }
   }

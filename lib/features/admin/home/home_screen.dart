@@ -8,8 +8,7 @@ import 'package:studyzee/features/admin/home/teacher_manage_section.dart';
 import 'package:studyzee/features/admin/home/time_table_manage.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import '../class/classmanage_screen.dart';
-import '../../../core/services/notification_service.dart';
-import '../../../core/models/app_notification.dart';
+
 import 'notification_send.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -183,15 +182,26 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (route) => false,
-                );
+              try {
+                await FirebaseAuth.instance.signOut();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
+                    (route) => false,
+                  );
+                }
+                if (context.mounted) _performLogout(context);
+              } catch (e) {
+                print('Error signing out: $e');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error signing out: $e')),
+                  );
+                }
               }
-              _performLogout(context);
             },
             child: const Text('Logout'),
           ),
@@ -211,12 +221,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 }
 
-
 // -----------------------------------------------------------------------------
 // SEND NOTIFICATION SCREEN (Keep existing)
 // -----------------------------------------------------------------------------
-
-
 
 // -----------------------------------------------------------------------------
 // TAB WIDGETS (Keep existing DashboardTab, StudentsTab, TeachersTab)
@@ -251,11 +258,20 @@ class _DashboardTabState extends State<DashboardTab> {
     try {
       // Run queries in parallel
       final results = await Future.wait([
-        _firestore.collection('users').where('role', isEqualTo: 'Student').count().get(),
-        _firestore.collection('users').where('role', isEqualTo: 'Teacher').count().get(),
+        _firestore
+            .collection('users')
+            .where('role', isEqualTo: 'Student')
+            .count()
+            .get(),
+        _firestore
+            .collection('users')
+            .where('role', isEqualTo: 'Teacher')
+            .count()
+            .get(),
         _firestore.collection('Classes').count().get(),
         _firestore.collection('FeePayments').get(), // Need to sum amounts
-        _firestore.collection('users')
+        _firestore
+            .collection('users')
             .orderBy('createdAt', descending: true)
             .limit(5)
             .get(), // Recent users
@@ -276,20 +292,17 @@ class _DashboardTabState extends State<DashboardTab> {
       // Process recent activities
       List<Map<String, String>> activities = [];
       final recentUsers = (results[4] as QuerySnapshot).docs;
-      
+
       for (var doc in recentUsers) {
         final data = doc.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'Unknown User';
         final role = data['role'] ?? 'User';
         final createdAt = data['createdAt'] as Timestamp?;
-        final timeStr = createdAt != null 
-            ? _getTimeAgo(createdAt.toDate()) 
+        final timeStr = createdAt != null
+            ? _getTimeAgo(createdAt.toDate())
             : 'Recently';
-            
-        activities.add({
-          'title': 'New $role joined: $name',
-          'time': timeStr,
-        });
+
+        activities.add({'title': 'New $role joined: $name', 'time': timeStr});
       }
 
       if (mounted) {
@@ -303,7 +316,7 @@ class _DashboardTabState extends State<DashboardTab> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading dashboard data: $e');
+      print('Error loading dashboard data: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -322,7 +335,10 @@ class _DashboardTabState extends State<DashboardTab> {
     } else if (amount >= 1000) {
       return '₹${(amount / 1000).toStringAsFixed(1)}K';
     } else {
-      return NumberFormat.currency(symbol: '₹', decimalDigits: 0).format(amount);
+      return NumberFormat.currency(
+        symbol: '₹',
+        decimalDigits: 0,
+      ).format(amount);
     }
   }
 
@@ -353,28 +369,28 @@ class _DashboardTabState extends State<DashboardTab> {
               mainAxisSpacing: 16,
               children: [
                 _buildStatCard(
-                  'Students', 
-                  _studentCount.toString(), 
-                  Icons.school, 
-                  Colors.blue
+                  'Students',
+                  _studentCount.toString(),
+                  Icons.school,
+                  Colors.blue,
                 ),
                 _buildStatCard(
-                  'Teachers', 
-                  _teacherCount.toString(), 
-                  Icons.person, 
-                  Colors.green
+                  'Teachers',
+                  _teacherCount.toString(),
+                  Icons.person,
+                  Colors.green,
                 ),
                 _buildStatCard(
-                  'Classes', 
-                  _classCount.toString(), 
-                  Icons.class_, 
-                  Colors.purple
+                  'Classes',
+                  _classCount.toString(),
+                  Icons.class_,
+                  Colors.purple,
                 ),
                 _buildStatCard(
-                  'Payments', 
-                  _formatCurrency(_totalPayments), 
-                  Icons.payment, 
-                  Colors.orange
+                  'Payments',
+                  _formatCurrency(_totalPayments),
+                  Icons.payment,
+                  Colors.orange,
                 ),
               ],
             ),
@@ -388,14 +404,14 @@ class _DashboardTabState extends State<DashboardTab> {
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Text('No recent activities'),
-                  ),
+                  child: Center(child: Text('No recent activities')),
                 ),
               )
             else
-              ..._recentActivities.map((activity) => 
-                _buildActivityItem(activity['title']!, activity['time']!)),
+              ..._recentActivities.map(
+                (activity) =>
+                    _buildActivityItem(activity['title']!, activity['time']!),
+              ),
           ],
         ),
       ),
@@ -451,5 +467,3 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 }
-
-

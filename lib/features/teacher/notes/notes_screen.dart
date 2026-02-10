@@ -444,6 +444,7 @@ class _NotesScreenState extends State<NotesScreen>
 
       _showSuccess('Note deleted successfully');
     } catch (e) {
+      print('Error deleting note: $e');
       _showError('Error deleting note: $e');
     }
   }

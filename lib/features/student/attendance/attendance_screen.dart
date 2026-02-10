@@ -407,6 +407,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         try {
           date = dateTime ?? DateTime.parse(dateStr);
         } catch (e) {
+          print('Error parsing date: $e');
           date = DateTime.now();
         }
 

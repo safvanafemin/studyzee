@@ -37,6 +37,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
     return StreamBuilder<TeacherProfile>(
       stream: _profileStream,
       builder: (context, profileSnapshot) {
+        if (profileSnapshot.hasError) {
+          print('Error loading teacher profile: ${profileSnapshot.error}');
+        }
         final profile = profileSnapshot.data;
         return Scaffold(
           backgroundColor: const Color(0xFFF5F7FA),
@@ -102,6 +105,9 @@ class _TrHomeScreenState extends State<TrHomeScreen> {
                   ? _notificationService.getNotifications(user.uid)
                   : Stream.value([]),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print('Error loading notifications: ${snapshot.error}');
+                }
                 final notifications = snapshot.data ?? [];
                 final unreadCount = notifications
                     .where((n) => !n.isRead)

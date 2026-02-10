@@ -89,6 +89,7 @@ class _TrexamScreenState extends State<TrexamScreen>
         }
 
         if (snapshot.hasError) {
+          print('Error loading upcoming exams: ${snapshot.error}');
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
@@ -137,6 +138,7 @@ class _TrexamScreenState extends State<TrexamScreen>
         }
 
         if (snapshot.hasError) {
+          print('Error loading completed exams: ${snapshot.error}');
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
@@ -444,6 +446,7 @@ class _TrexamScreenState extends State<TrexamScreen>
           );
         }
       } catch (e) {
+        print('Error deleting exam: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -465,6 +468,7 @@ class _TrexamScreenState extends State<TrexamScreen>
         );
       }
     } catch (e) {
+      print('Error updating exam: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -517,6 +521,7 @@ class ExamResultsScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
+            print('Error loading exam results: ${snapshot.error}');
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 

@@ -90,6 +90,7 @@ class _AdminTeachersScreenState extends State<AdminTeachersScreen> {
 
         _fetchTeachers();
       } catch (e) {
+        print('Error deleting teacher: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error deleting teacher: $e'),
@@ -395,6 +396,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
 
       Navigator.pop(context, true);
     } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code} - ${e.message}');
       String errorMessage;
       switch (e.code) {
         case 'weak-password':
@@ -413,6 +415,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     } catch (e) {
+      print('Error saving teacher: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
@@ -607,6 +610,11 @@ class TeacherDetailScreen extends StatelessWidget {
             .doc(teacherId)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            print('Error loading teacher details: ${snapshot.error}');
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }

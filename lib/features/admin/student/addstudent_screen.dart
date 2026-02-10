@@ -265,6 +265,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      print('Error saving student: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -641,6 +642,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          print('Error loading classes: ${snapshot.error}');
           return Text('Error: ${snapshot.error}');
         }
 

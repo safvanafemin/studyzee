@@ -15,7 +15,7 @@ class TeacherExamsListScreen extends StatefulWidget {
 class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String _selectedFilter = 'all'; // all, upcoming, completed
+  String _selectedFilter = 'all'; // all, upcoming
 
   @override
   Widget build(BuildContext context) {
@@ -34,18 +34,18 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
               );
             },
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              setState(() {
-                _selectedFilter = value;
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All Exams')),
-              const PopupMenuItem(value: 'upcoming', child: Text('Upcoming')),
-              const PopupMenuItem(value: 'completed', child: Text('Completed')),
-            ],
-          ),
+
+          // PopupMenuButton<String>(
+          //   onSelected: (value) {
+          //     setState(() {
+          //       _selectedFilter = value;
+          //     });
+          //   },
+          //   itemBuilder: (context) => [
+          //     const PopupMenuItem(value: 'all', child: Text('All Exams')),
+          //     // const PopupMenuItem(value: 'upcoming', child: Text('Upcoming')),
+          //   ],
+          // ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -59,44 +59,66 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          var exams =
+              snapshot.data?.docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                data['id'] = doc.id;
+                return data;
+              }).toList() ??
+              [];
+
+          // Filter exams based on selection
+          if (_selectedFilter != 'all') {
+            final now = DateTime.now();
+            exams = exams.where((exam) {
+              final scheduledAt = (exam['scheduledAt'] as Timestamp?)?.toDate();
+              if (scheduledAt == null) return false;
+
+              if (_selectedFilter == 'upcoming') {
+                return scheduledAt.isAfter(now);
+              }
+              return true;
+            }).toList();
+          }
+
+          if (exams.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.quiz_outlined, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  const Text(
-                    'No exams created yet',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  Text(
+                    _selectedFilter == 'all'
+                        ? 'No exams created yet'
+                        : 'No $_selectedFilter exams found',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const CreateExamWithQuestionsScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create Your First Exam'),
-                  ),
+                  if (_selectedFilter == 'all' || _selectedFilter == 'upcoming')
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const CreateExamWithQuestionsScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Your First Exam'),
+                    ),
                 ],
               ),
             );
           }
 
-          final exams = snapshot.data!.docs;
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: exams.length,
             itemBuilder: (context, index) {
-              final exam = exams[index].data() as Map<String, dynamic>;
-              exam['id'] = exams[index].id;
+              final exam = exams[index];
               return _buildExamCard(exam);
             },
           );
@@ -109,17 +131,11 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
 
-    Query query = _firestore
+    return _firestore
         .collection('exams')
-        .where('teacherId', isEqualTo: user.uid);
-
-    if (_selectedFilter == 'upcoming') {
-      query = query.where('status', isEqualTo: 'upcoming');
-    } else if (_selectedFilter == 'completed') {
-      query = query.where('status', isEqualTo: 'completed');
-    }
-
-    return query.snapshots();
+        .where('teacherId', isEqualTo: user.uid)
+        .orderBy('scheduledAt', descending: true)
+        .snapshots();
   }
 
   Widget _buildExamCard(Map<String, dynamic> exam) {
@@ -128,8 +144,41 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
         ? DateFormat('MMM d, yyyy hh:mm a').format(scheduledAt)
         : 'Date not set';
 
-    final isUpcoming = exam['status'] == 'upcoming';
-    final isCompleted = exam['status'] == 'completed';
+    String? rawStatus = exam['status']?.toString();
+    final statusFromFirestore = rawStatus?.toLowerCase();
+
+    bool isUpcoming =
+        scheduledAt != null && scheduledAt.isAfter(DateTime.now());
+    bool isCompleted =
+        scheduledAt != null && scheduledAt.isBefore(DateTime.now());
+
+    String statusText;
+    String capitalize(String s) =>
+        s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+    if (statusFromFirestore != null && statusFromFirestore.isNotEmpty) {
+      if (statusFromFirestore == 'upcoming' ||
+          statusFromFirestore == 'scheduled' ||
+          statusFromFirestore == 'published') {
+        isUpcoming = true;
+        isCompleted = false;
+      } else if (statusFromFirestore == 'completed' ||
+          statusFromFirestore == 'done') {
+        isCompleted = true;
+        isUpcoming = false;
+      } else if (statusFromFirestore == 'draft' ||
+          statusFromFirestore == 'saved') {
+        isUpcoming = false;
+        isCompleted = false;
+      }
+      statusText = capitalize(statusFromFirestore);
+    } else {
+      statusText = isUpcoming
+          ? 'Upcoming'
+          : isCompleted
+          ? 'Completed'
+          : 'Unknown';
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -182,32 +231,33 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isUpcoming
-                        ? Colors.blue.shade100
-                        : isCompleted
-                        ? Colors.green.shade100
-                        : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    exam['status'] ?? 'unknown',
-                    style: TextStyle(
-                      color: isUpcoming
-                          ? Colors.blue.shade800
-                          : isCompleted
-                          ? Colors.green.shade800
-                          : Colors.grey.shade800,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
+
+                // Container(
+                //   padding: const EdgeInsets.symmetric(
+                //     horizontal: 12,
+                //     vertical: 6,
+                //   ),
+                //   decoration: BoxDecoration(
+                //     color: isUpcoming
+                //         ? Colors.blue.shade100
+                //         : isCompleted
+                //         ? Colors.green.shade100
+                //         : Colors.grey.shade200,
+                //     borderRadius: BorderRadius.circular(20),
+                //   ),
+                //   child: Text(
+                //     statusText,
+                //     style: TextStyle(
+                //       color: isUpcoming
+                //           ? Colors.blue.shade800
+                //           : isCompleted
+                //           ? Colors.green.shade800
+                //           : Colors.grey.shade800,
+                //       fontWeight: FontWeight.bold,
+                //       fontSize: 12,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 16),
@@ -318,6 +368,7 @@ class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
           ),
         );
       } catch (e) {
+        print('Error deleting exam: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error deleting exam: $e'),

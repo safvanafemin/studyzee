@@ -61,6 +61,7 @@ class _StudentsTabState extends State<StudentsTab> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
+                print('Error loading students: ${snapshot.error}');
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
 
@@ -549,6 +550,7 @@ class _StudentsTabState extends State<StudentsTab> {
                   );
                 }
               } catch (e) {
+                print('Error deleting student: $e');
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(

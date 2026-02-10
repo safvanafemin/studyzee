@@ -853,6 +853,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
 
       Navigator.pop(context);
     } catch (e) {
+      print('Error updating student: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );

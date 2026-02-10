@@ -48,6 +48,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
         stream: _profileStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
+            print('Error loading teacher profile: ${snapshot.error}');
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
@@ -398,6 +399,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
       }
     } catch (e) {
       if (_isMounted) {
+        print('Error updating profile picture: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -548,6 +550,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                           backgroundColor: Colors.red,
                         ),
                       );
+                      print('Error updating profile: $e');
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -740,6 +743,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                           backgroundColor: Colors.red,
                         ),
                       );
+                      print('Error changing password: $e');
                     }
                   },
                   style: ElevatedButton.styleFrom(

@@ -15,8 +15,35 @@ class StudentExamScreen extends StatefulWidget {
 class _StudentExamScreenState extends State<StudentExamScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _studentClassId;
+  bool _isLoading = true;
 
   @override
+  void initState() {
+    super.initState();
+    _fetchStudentDetails();
+  }
+
+  Future<void> _fetchStudentDetails() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists && mounted) {
+          setState(() {
+            _studentClassId = doc.data()?['classId'];
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching student details: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
@@ -42,35 +69,39 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
         body: TabBarView(
           children: [
             // Upcoming Exams
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('exams')
-                  .where(
-                    'status',
-                    whereIn: ['upcoming', 'started', 'submitted'],
-                  )
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : StreamBuilder<QuerySnapshot>(
+                    stream: _firestore
+                        .collection('exams')
+                        .where(
+                          'status',
+                          whereIn: ['upcoming', 'started', 'submitted'],
+                        )
+                        .where('classId', isEqualTo: _studentClassId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No upcoming exams'));
-                }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(child: Text('No upcoming exams'));
+                      }
 
-                final exams = snapshot.data!.docs;
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: exams.length,
-                  itemBuilder: (context, index) {
-                    final exam = exams[index].data() as Map<String, dynamic>;
-                    exam['id'] = exams[index].id;
-                    return _buildExamCard(exam);
-                  },
-                );
-              },
-            ),
+                      final exams = snapshot.data!.docs;
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: exams.length,
+                        itemBuilder: (context, index) {
+                          final exam =
+                              exams[index].data() as Map<String, dynamic>;
+                          exam['id'] = exams[index].id;
+                          return _buildExamCard(exam);
+                        },
+                      );
+                    },
+                  ),
 
             // Completed Exams (Results)
             StreamBuilder<QuerySnapshot>(
@@ -280,23 +311,31 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Check if already submitted
-    final submissionQuery = await _firestore
-        .collection('exam_submissions')
-        .where('examId', isEqualTo: exam['id'])
-        .where('studentId', isEqualTo: user.uid)
-        .get();
+    try {
+      print('Starting exam check for ${exam['id']}');
+      // Check if already submitted
+      final submissionQuery = await _firestore
+          .collection('exam_submissions')
+          .where('examId', isEqualTo: exam['id'])
+          .where('studentId', isEqualTo: user.uid)
+          .get();
 
-    if (submissionQuery.docs.isNotEmpty) {
-      _showError('You have already submitted this exam');
-      return;
+      if (submissionQuery.docs.isNotEmpty) {
+        _showError('You have already submitted this exam');
+        return;
+      }
+
+      // Navigate to exam taking screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => TakeExamScreen(exam: exam)),
+        );
+      }
+    } catch (e) {
+      print('Error checking/starting exam: $e');
+      if (mounted) _showError('Error starting exam: $e');
     }
-
-    // Navigate to exam taking screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => TakeExamScreen(exam: exam)),
-    );
   }
 
   void _showError(String message) {
@@ -460,6 +499,7 @@ class _TakeExamScreenState extends State<TakeExamScreen> {
         );
       }
     } catch (e) {
+      print('Error submitting exam: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

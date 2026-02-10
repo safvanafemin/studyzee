@@ -55,6 +55,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          print('Error loading notifications: ${snapshot.error}');
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
@@ -77,10 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'No notifications found',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -105,7 +103,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationCard(Map<String, dynamic> data) {
     final title = data['title'] ?? 'No Title';
     final message = data['message'] ?? '';
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final createdAt =
+        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
     final type = data['type'] ?? 'general';
     final senderName = data['senderName'] ?? 'System';
 
@@ -167,28 +166,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                       Text(
                         'From: $senderName',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
                 Text(
                   DateFormat('h:mm a').format(createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              style: const TextStyle(fontSize: 14),
-            ),
+            Text(message, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -196,10 +186,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(width: 4),
                 Text(
                   DateFormat('MMM dd, yyyy').format(createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
               ],
             ),

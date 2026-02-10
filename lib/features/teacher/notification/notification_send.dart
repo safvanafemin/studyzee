@@ -254,6 +254,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      print('Failed to send notification: $e');
       _showError('Failed to send notification: $e');
     } finally {
       if (mounted) {

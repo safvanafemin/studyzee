@@ -70,7 +70,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     super.dispose();
   }
 
-   Future<void> _sendNotification() async {
+  Future<void> _sendNotification() async {
     if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -85,7 +85,8 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       return;
     }
 
-    if (_selectedTarget == 'Individual Teachers' && _selectedTeacherId == null) {
+    if (_selectedTarget == 'Individual Teachers' &&
+        _selectedTeacherId == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please select a teacher')));
@@ -102,6 +103,16 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         case 'All Users':
           await _notificationService.sendRoleNotification(
             role: 'Both',
+            title: _titleController.text.trim(),
+            message: _bodyController.text.trim(),
+            type: NotificationType.announcement,
+            senderId: senderId,
+            senderName: 'Admin',
+          );
+          break;
+        case 'Students Only':
+          await _notificationService.sendRoleNotification(
+            role: 'Student',
             title: _titleController.text.trim(),
             message: _bodyController.text.trim(),
             type: NotificationType.announcement,
@@ -165,6 +176,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
+      print('Error sending notification: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -207,14 +219,20 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
               ),
               value: _selectedTarget,
-              items: ['All Users', 'Parents Only', 'Teachers Only', 'Individual Teachers', 'Individual Classes'].map((
-                String value,
-              ) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
+              items:
+                  [
+                    'All Users',
+                    'Students Only',
+                    'Parents Only',
+                    'Teachers Only',
+                    'Individual Teachers',
+                    'Individual Classes',
+                  ].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
               onChanged: (String? newValue) {
                 if (newValue != null) {
                   setState(() {
@@ -232,22 +250,22 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             if (_selectedTarget == 'Individual Teachers') ...[
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Select Teacher',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person, color: Colors.blueGrey),
+                decoration: const InputDecoration(
+                  labelText: 'Select Teacher',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person, color: Colors.blueGrey),
+                ),
+                value: _selectedTeacherId,
+                items: _teachers.map((t) {
+                  return DropdownMenuItem<String>(
+                    value: t['id'],
+                    child: Text(t['name']),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() => _selectedTeacherId = newValue);
+                },
               ),
-              value: _selectedTeacherId,
-              items: _teachers.map((t) {
-                return DropdownMenuItem<String>(
-                  value: t['id'],
-                  child: Text(t['name']),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() => _selectedTeacherId = newValue);
-              },
-            ),
             ],
             if (_selectedTarget == 'Individual Classes') ...[
               const SizedBox(height: 20),
