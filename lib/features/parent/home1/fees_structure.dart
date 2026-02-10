@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../../core/services/payment_service.dart';
 
 class ParentFeeScreen extends StatefulWidget {
   const ParentFeeScreen({super.key});
@@ -23,13 +25,60 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
   List<Map<String, dynamic>> _children = [];
   Map<String, List<Map<String, dynamic>>> _childPayments = {};
   Map<String, double> _childMonthlyFees = {};
+  late PaymentService _paymentService;
+  Map<String, dynamic>? _processingPaymentData;
 
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _paymentService = PaymentService();
+    _paymentService.onSuccess = _handleRazorpaySuccess;
+    _paymentService.onError = _handleRazorpayError;
     _loadParentData();
+  }
+
+  @override
+  void dispose() {
+    _paymentService.dispose();
+    super.dispose();
+  }
+
+  void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+    if (_processingPaymentData != null) {
+      setState(() => _isLoading = true);
+      try {
+        await _paymentService.savePaymentToFirestore(
+          paymentId: response.paymentId ?? 'N/A',
+          paymentDetails: _processingPaymentData!,
+        );
+        _showSnackBar('Payment successful!', isError: false);
+
+        // Refresh data
+        _childPayments.clear();
+        await _loadParentData();
+      } catch (e) {
+        _showSnackBar('Error recording payment: $e', isError: true);
+      } finally {
+        setState(() => _isLoading = false);
+        _processingPaymentData = null;
+      }
+    }
+  }
+
+  void _handleRazorpayError(PaymentFailureResponse response) {
+    _showSnackBar('Payment failed: ${response.message}', isError: true);
+    _processingPaymentData = null;
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    _scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+      ),
+    );
   }
 
   Future<void> _loadParentData() async {
@@ -96,7 +145,11 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
           _childMonthlyFees[childId] = monthlyFee;
 
           // Load payment status for this child
-          await _loadChildPayments(childId.toString(), monthlyFee);
+          await _loadChildPayments(
+            childId.toString(),
+            monthlyFee,
+            classId?.toString(),
+          );
         }
       }
     } catch (e) {
@@ -104,124 +157,228 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
     }
   }
 
-  Future<void> _loadChildPayments(String childId, double monthlyFee) async {
+  Future<void> _loadChildPayments(
+    String childId,
+    double monthlyFee,
+    String? classId,
+  ) async {
     try {
       final currentYear = DateTime.now().year;
+      List<Map<String, dynamic>> allMonths = [];
+
+      // 1. Standard Monthly Fees
       final paymentsQuery = await _firestore
           .collection('FeePayments')
           .where('studentId', isEqualTo: childId)
           .where('year', isEqualTo: currentYear)
+          .where('type', isEqualTo: 'monthly') // Only fetch monthly ones here
           .get();
 
-      // Initialize 12 months with unpaid status
-      List<Map<String, dynamic>> months = [];
       for (int month = 1; month <= 12; month++) {
-        months.add({
+        final paymentDoc = paymentsQuery.docs
+            .where((doc) => doc['month'] == month)
+            .firstOrNull;
+        final isPaid = paymentDoc != null;
+
+        allMonths.add({
+          'id': 'monthly_$month',
+          'title': '${_getMonthName(month)} $currentYear',
+          'type': 'monthly',
           'month': month,
           'monthName': _getMonthName(month),
           'year': currentYear,
           'amount': monthlyFee,
-          'status': 'unpaid', // default
-          'paymentData': null,
+          'status': isPaid ? 'paid' : 'unpaid',
+          'dueDate': DateTime(currentYear, month, 10),
+          'paymentData': isPaid
+              ? {
+                  'id': paymentDoc.id,
+                  ...paymentDoc.data(),
+                  'paymentDate': paymentDoc.data()['paymentDate']?.toDate(),
+                }
+              : null,
         });
       }
 
-      // Mark paid months
-      for (var doc in paymentsQuery.docs) {
-        final data = doc.data();
-        final month = data['month'];
-        final status = data['status'];
+      // 2. Custom Fees (FeeStructures)
+      if (classId != null) {
+        final feeStructuresQuery = await _firestore
+            .collection('FeeStructures')
+            .where('classId', isEqualTo: classId)
+            .get();
 
-        if (month != null && (status == 'paid' || status == 'completed')) {
-          // Update the month's status
-          int index = month - 1;
-          if (index >= 0 && index < 12) {
-            months[index]['status'] = 'paid';
-            months[index]['paymentData'] = {
-              'id': doc.id,
-              ...data,
-              'paymentDate': data['paymentDate']?.toDate(),
-            };
-          }
+        for (var doc in feeStructuresQuery.docs) {
+          final data = doc.data();
+          final feeId = doc.id;
+          if (!(data['isActive'] ?? true)) continue;
+
+          // Check if paid
+          final paymentQuery = await _firestore
+              .collection('FeePayments')
+              .where('studentId', isEqualTo: childId)
+              .where('feeId', isEqualTo: feeId)
+              .get();
+
+          final isPaid = paymentQuery.docs.isNotEmpty;
+          final dueDate = (data['dueDate'] as Timestamp).toDate();
+
+          allMonths.add({
+            'id': feeId,
+            'title': data['title'] ?? 'Unknown Fee',
+            'type': 'custom',
+            'amount': (data['amount'] ?? 0.0).toDouble(),
+            'status': isPaid ? 'paid' : 'unpaid',
+            'dueDate': dueDate,
+            'description': data['description'],
+            'paymentData': isPaid
+                ? {
+                    'id': paymentQuery.docs.first.id,
+                    ...paymentQuery.docs.first.data(),
+                    'paymentDate': paymentQuery.docs.first
+                        .data()['paymentDate']
+                        ?.toDate(),
+                  }
+                : null,
+          });
         }
       }
 
-      _childPayments[childId] = months;
+      // Sort by due date
+      allMonths.sort(
+        (a, b) =>
+            (a['dueDate'] as DateTime).compareTo(b['dueDate'] as DateTime),
+      );
+
+      _childPayments[childId] = allMonths;
     } catch (e) {
       print('Error loading payments for child $childId: $e');
     }
   }
 
-  Future<void> _makePayment(String childId, int month, double amount) async {
-    final currentYear = DateTime.now().year;
+  void _initiatePayment(String childId, Map<String, dynamic> payment) {
+    final child = _children.firstWhere((c) => c['id'] == childId);
 
-    await showDialog(
+    _processingPaymentData = {
+      'amount': payment['amount'],
+      'month': payment['month'],
+      'monthName': payment['monthName'],
+      'year': payment['year'],
+      'feeId': payment['type'] == 'custom' ? payment['id'] : null,
+      'title': payment['title'],
+      'type': payment['type'],
+      'studentId': childId,
+      'studentName': child['name'],
+      'classId': child['classId'],
+      'className': child['class'],
+      'paidBy': 'Parent',
+      'parentId': _auth.currentUser?.uid,
+    };
+
+    _paymentService.startPayment(
+      amount: payment['amount'],
+      name: 'College Fees',
+      description: payment['title'],
+      email: _auth.currentUser?.email ?? 'parent@college.edu',
+      contact: _parentData?['phoneNumber'] ?? '9999999999',
+    );
+  }
+
+  Future<void> _makePayment(
+    String childId,
+    Map<String, dynamic> payment,
+  ) async {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Pay ${_getMonthName(month)} Fee'),
-        content: ParentPaymentDialogContent(
-          childName: _children.firstWhere((c) => c['id'] == childId)['name'],
-          month: _getMonthName(month),
-          year: currentYear,
-          amount: amount,
-          onConfirm: (paymentMethod, notes) async {
-            try {
-              await _recordPayment(
-                studentId: childId,
-                studentName: _children.firstWhere(
-                  (c) => c['id'] == childId,
-                )['name'],
-                classId: _children.firstWhere(
-                  (c) => c['id'] == childId,
-                )['classId'],
-                className: _children.firstWhere(
-                  (c) => c['id'] == childId,
-                )['class'],
-                month: month,
-                year: currentYear,
-                amount: amount,
-                paymentMethod: paymentMethod,
-                notes: notes,
-              );
-
-              // Close dialog
-              Navigator.pop(context);
-
-              // Refresh data
-              if (mounted) {
-                setState(() {
-                  _childPayments.clear();
-                });
-                for (var child in _children) {
-                  await _loadChildPayments(
-                    child['id'],
-                    _childMonthlyFees[child['id']]!,
-                  );
-                }
-                if (mounted) {
-                  setState(() {});
-                }
-              }
-
-              // Show success message
-              _scaffoldMessengerKey.currentState?.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${_getMonthName(month)} $currentYear marked as paid',
-                  ),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            } catch (e) {
-              _scaffoldMessengerKey.currentState?.showSnackBar(
-                SnackBar(
-                  content: Text('Error: $e'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Pay Fee - ${payment['title']}',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[900],
+              ),
+            ),
+            const Divider(height: 32),
+            _buildAmountRow(
+              'Student',
+              _children.firstWhere((c) => c['id'] == childId)['name'],
+            ),
+            _buildAmountRow(
+              'Amount',
+              '₹${payment['amount'].toStringAsFixed(2)}',
+            ),
+            if (payment['description'] != null &&
+                payment['description'].toString().isNotEmpty)
+              _buildAmountRow('Description', payment['description']),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _initiatePayment(childId, payment);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 2, 18, 69),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Pay with Razorpay',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmountRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.blue[900],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -379,7 +536,6 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
               itemCount: payments.length,
               itemBuilder: (context, index) {
                 final monthData = payments[index];
-                final month = monthData['month'];
                 final monthName = monthData['monthName'];
                 final status = monthData['status'];
                 final isPaid = status == 'paid';
@@ -387,7 +543,7 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                 return GestureDetector(
                   onTap: () {
                     if (!isPaid) {
-                      _makePayment(childId, month, monthlyFee);
+                      _makePayment(childId, monthData);
                     }
                   },
                   child: Container(
@@ -553,8 +709,9 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                 });
                 for (var child in _children) {
                   await _loadChildPayments(
-                    child['id'],
+                    child['id']?.toString() ?? '',
                     _childMonthlyFees[child['id']]!,
+                    child['classId']?.toString(),
                   );
                 }
                 if (mounted) {

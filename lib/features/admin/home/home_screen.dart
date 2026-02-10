@@ -9,6 +9,7 @@ import 'package:studyzee/features/admin/home/time_table_manage.dart';
 import 'package:studyzee/features/auth/login_screen.dart';
 import '../class/classmanage_screen.dart';
 
+import 'package:studyzee/features/admin/fees/fees_manage_screen.dart';
 import 'notification_send.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -120,8 +121,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             onTap: () => Navigator.pop(context),
           ),
           ListTile(
+            leading: const Icon(Icons.add_card),
+            title: const Text('Extra Fees (Extra)'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FeesManageScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.payment),
-            title: const Text('Payments'),
+            title: const Text('Monthly Fees Settings'),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(

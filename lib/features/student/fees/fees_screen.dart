@@ -120,14 +120,15 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
   Future<void> _loadAllPayments() async {
     try {
       final user = _auth.currentUser;
-      if (user == null) return;
-
+      if (user == null || _userData == null || _userData!['classId'] == null)
+        return;
       _allPayments.clear();
       _pendingPayments.clear();
       _paidPayments.clear();
       _totalDue = 0.0;
       _totalPaid = 0.0;
 
+      // 1. Load Standard Monthly Fees
       for (int month = 1; month <= 12; month++) {
         final monthName = _months[month - 1];
         final dueDate = DateTime(_currentYear, month, 10);
@@ -137,8 +138,13 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
 
         final paymentDoc = await _getPaymentForMonth(month, _currentYear);
 
+        Map<String, dynamic> paymentData;
+
         if (paymentDoc != null && paymentDoc['status'] == 'paid') {
-          final paymentData = {
+          paymentData = {
+            'id': 'monthly_$month', // Unique ID for standard fees
+            'title': '$monthName $_currentYear',
+            'type': 'monthly',
             'month': month,
             'monthName': monthName,
             'year': _currentYear,
@@ -150,11 +156,13 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
             'paymentMethod': paymentDoc['paymentMethod'] ?? 'Razorpay',
             'isCurrentMonth': isCurrentMonth,
           };
-          _allPayments.add(paymentData);
           _paidPayments.add(paymentData);
           _totalPaid += _monthlyFee;
         } else {
-          final paymentData = {
+          paymentData = {
+            'id': 'monthly_$month',
+            'title': '$monthName $_currentYear',
+            'type': 'monthly',
             'month': month,
             'monthName': monthName,
             'year': _currentYear,
@@ -164,16 +172,88 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
             'isOverdue': isOverdue,
             'isCurrentMonth': isCurrentMonth,
           };
-          _allPayments.add(paymentData);
           _pendingPayments.add(paymentData);
           if (DateTime.now().month >= month) {
             _totalDue += _monthlyFee;
           }
         }
+        _allPayments.add(paymentData);
       }
-      _allPayments.sort((a, b) => a['month'].compareTo(b['month']));
-      _pendingPayments.sort((a, b) => a['month'].compareTo(b['month']));
-      _paidPayments.sort((a, b) => b['month'].compareTo(a['month']));
+
+      // 2. Load Admin Custom Fees (FeeStructures)
+      final feeStructuresQuery = await _firestore
+          .collection('FeeStructures')
+          .where('classId', isEqualTo: _userData!['classId'])
+          .get();
+
+      for (var doc in feeStructuresQuery.docs) {
+        final data = doc.data();
+        final feeId = doc.id;
+        final isActive = data['isActive'] ?? true;
+        if (!isActive) continue;
+
+        // Check if paid
+        final paymentQuery = await _firestore
+            .collection('FeePayments')
+            .where('studentId', isEqualTo: user.uid)
+            .where('feeId', isEqualTo: feeId)
+            .get();
+
+        final isPaid = paymentQuery.docs.isNotEmpty;
+        final dueDate = (data['dueDate'] as Timestamp).toDate();
+        final amount = (data['amount'] ?? 0.0).toDouble();
+
+        Map<String, dynamic> feeData;
+
+        if (isPaid) {
+          final paymentDoc = paymentQuery.docs.first.data();
+          feeData = {
+            'id': feeId,
+            'title': data['title'] ?? 'Unknown Fee',
+            'type': 'custom',
+            'amount': amount,
+            'dueDate': dueDate,
+            'paymentDate': (paymentDoc['paymentDate'] as Timestamp).toDate(),
+            'status': 'paid',
+            'receiptNumber': paymentDoc['receiptNumber'] ?? 'N/A',
+            'paymentMethod': paymentDoc['paymentMethod'] ?? 'Razorpay',
+            'description': data['description'],
+          };
+          _paidPayments.add(feeData);
+          _totalPaid += amount;
+        } else {
+          feeData = {
+            'id': feeId,
+            'title': data['title'] ?? 'Unknown Fee',
+            'type': 'custom',
+            'amount': amount,
+            'dueDate': dueDate,
+            'status': 'pending',
+            'isOverdue': DateTime.now().isAfter(dueDate),
+            'description': data['description'],
+          };
+          _pendingPayments.add(feeData);
+          _totalDue += amount;
+        }
+        _allPayments.add(feeData);
+      }
+
+      // Sort
+      _allPayments.sort(
+        (a, b) =>
+            (a['dueDate'] as DateTime).compareTo(b['dueDate'] as DateTime),
+      );
+      _pendingPayments.sort(
+        (a, b) =>
+            (a['dueDate'] as DateTime).compareTo(b['dueDate'] as DateTime),
+      );
+      _paidPayments.sort(
+        (a, b) =>
+            (b['paymentDate'] as DateTime?)?.compareTo(
+              a['paymentDate'] as DateTime,
+            ) ??
+            0,
+      ); // Sort paid by payment date desc
     } catch (e) {
       print('Error loading payments: $e');
     }
@@ -208,9 +288,12 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
   void _initiatePayment(Map<String, dynamic> payment) {
     _processingPaymentData = {
       'amount': payment['amount'],
-      'month': payment['month'],
-      'monthName': payment['monthName'],
-      'year': payment['year'],
+      'month': payment['month'], // nullable
+      'monthName': payment['monthName'], // nullable
+      'year': payment['year'], // nullable
+      'feeId': payment['id'], // NEW: for custom fees
+      'title': payment['title'], // NEW
+      'type': payment['type'], // NEW
       'studentName': _userData?['name'] ?? 'Student',
       'classId': _userData?['classId'] ?? '',
       'className': _userData?['className'] ?? '',
@@ -219,7 +302,7 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
     _paymentService.startPayment(
       amount: payment['amount'],
       name: 'College Fees',
-      description: '${payment['monthName']} ${payment['year']} Payment',
+      description: payment['title'] ?? '${payment['monthName']} ${payment['year']} Payment',
       email: _auth.currentUser?.email ?? 'student@college.edu',
       contact: _userData?['phoneNumber'] ?? '9999999999',
     );
@@ -255,7 +338,7 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Pay Fees - ${payment['monthName']}',
+              'Pay Fees - ${payment['title'] ?? payment['monthName']}',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -263,12 +346,14 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
               ),
             ),
             const Divider(height: 32),
-            _buildDetailRow(
-              'Amount',
-              '₹${payment['amount'].toStringAsFixed(2)}',
-            ),
-            _buildDetailRow('Month', payment['monthName']),
-            _buildDetailRow('Year', payment['year'].toString()),
+            _buildDetailRow('Amount', '₹${payment['amount'].toStringAsFixed(2)}'),
+            if (payment['monthName'] != null) ...[
+              _buildDetailRow('Month', payment['monthName']),
+              _buildDetailRow('Year', payment['year'].toString()),
+            ],
+            if (payment['description'] != null &&
+                payment['description'].toString().isNotEmpty)
+              _buildDetailRow('Description', payment['description']),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -357,7 +442,7 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('${payment['monthName']} Receipt'),
+        title: Text('${payment['title'] ?? payment['monthName']} Receipt'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -547,7 +632,7 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
           vertical: 12,
         ),
         title: Text(
-          '${payment['monthName']} ${payment['year']}',
+          payment['title'] ?? '${payment['monthName']} ${payment['year']}',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(

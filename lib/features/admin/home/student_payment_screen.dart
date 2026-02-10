@@ -13,7 +13,8 @@ class ClassWiseStudentsScreen extends StatefulWidget {
   const ClassWiseStudentsScreen({super.key});
 
   @override
-  State<ClassWiseStudentsScreen> createState() => _ClassWiseStudentsScreenState();
+  State<ClassWiseStudentsScreen> createState() =>
+      _ClassWiseStudentsScreenState();
 }
 
 class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
@@ -26,9 +27,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
   Map<String, bool> _expandedClasses = {};
   Map<String, Map<int, bool>> _studentPaymentStatus = {};
   Map<String, double> _classMonthlyFees = {};
+  bool _showPendingOnly = false;
 
   // Add a GlobalKey for ScaffoldMessenger
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -60,10 +63,7 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
 
       _classes = classSnapshot.docs.map((doc) {
         final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-        };
+        return {'id': doc.id, ...data};
       }).toList();
 
       // Load all active students
@@ -87,16 +87,17 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
           'totalFeesCollected': 0.0,
           'totalFeesPending': 0.0,
         };
-        
+
         // Get class monthly fee
-        _classMonthlyFees[classId] = (classData['monthlyFee'] ?? 0.0).toDouble();
+        _classMonthlyFees[classId] = (classData['monthlyFee'] ?? 0.0)
+            .toDouble();
       }
 
       // Group students by class
       for (var doc in studentSnapshot.docs) {
         final studentData = doc.data();
         final classId = studentData['classId'];
-        
+
         if (classId != null && _classStudents.containsKey(classId)) {
           final student = {
             'id': doc.id,
@@ -108,9 +109,9 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
             'parentPhone': studentData['parentPhone'] ?? '',
             'rollNumber': studentData['rollNumber'] ?? 'N/A',
           };
-          
+
           _classStudents[classId]!.add(student);
-          
+
           // Update class summary
           final summary = _classSummary[classId]!;
           summary['totalStudents'] = summary['totalStudents']! + 1;
@@ -137,72 +138,126 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
 
   Future<void> _loadPaymentStatus() async {
     try {
-      // Load all fee payments for current year
       final currentYear = DateTime.now().year;
       final paymentSnapshot = await _firestore
           .collection('FeePayments')
           .where('year', isEqualTo: currentYear)
           .get();
 
-      // Initialize payment status for all students
+      // Load all custom fee structures
+      final extraFeesSnapshot = await _firestore
+          .collection('FeeStructures')
+          .get();
+      final List<Map<String, dynamic>> allExtraFees = extraFeesSnapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .toList();
+
+      // Initialize status for all students
       for (var classStudents in _classStudents.values) {
         for (var student in classStudents) {
           final studentId = student['id'];
           _studentPaymentStatus[studentId] = {};
-          
-          // Initialize all months as unpaid
+
+          // Monthly months 1-12
           for (int month = 1; month <= 12; month++) {
             _studentPaymentStatus[studentId]![month] = false;
+          }
+
+          // Custom fees (using negative IDs or String keys if possible)
+          // Actually, let's just store a list of paid extra fee IDs
+          student['paidExtraFeeIds'] = <String>[];
+          student['pendingExtraFees'] = <Map<String, dynamic>>[];
+        }
+      }
+
+      // Mark paid months and extra fees
+      for (var doc in paymentSnapshot.docs) {
+        final data = doc.data();
+        final studentId = data['studentId'];
+        final feeId = data['feeId']; // Custom fee ID
+        final month = data['month'];
+        final status = data['status'];
+
+        if (studentId != null &&
+            (status == 'paid' || status == 'completed') &&
+            _studentPaymentStatus.containsKey(studentId)) {
+          if (month != null) {
+            _studentPaymentStatus[studentId]![month] = true;
+          }
+
+          if (feeId != null) {
+            // Find student in our lists
+            for (var classId in _classStudents.keys) {
+              final student = _classStudents[classId]!
+                  .where((s) => s['id'] == studentId)
+                  .firstOrNull;
+              if (student != null) {
+                (student['paidExtraFeeIds'] as List<String>).add(feeId);
+                break;
+              }
+            }
           }
         }
       }
 
-      // Mark paid months
-      for (var doc in paymentSnapshot.docs) {
-        final data = doc.data();
-        final studentId = data['studentId'];
-        final month = data['month'];
-        final status = data['status'];
-        
-        if (studentId != null && 
-            month != null && 
-            (status == 'paid' || status == 'completed') &&
-            _studentPaymentStatus.containsKey(studentId)) {
-          _studentPaymentStatus[studentId]![month] = true;
-        }
-      }
-
-      // Update class summaries
+      // Finalize pending extra fees and class summaries
       for (var classId in _classStudents.keys) {
         final students = _classStudents[classId]!;
-        final monthlyFee = _classMonthlyFees[classId] ?? 0.0;
-        
-        int paidStudents = 0;
-        int pendingStudents = 0;
+        final classData = _classes.firstWhere((c) => c['id'] == classId);
+        final monthlyFee = (classData['monthlyFee'] ?? 0.0).toDouble();
+        final currentMonth = DateTime.now().month;
+
+        // Extra fees for THIS class
+        final classExtraFees = allExtraFees
+            .where((f) => f['classId'] == classId)
+            .toList();
+
+        int paidStudentsCount = 0;
+        int pendingStudentsCount = 0;
         double totalCollected = 0.0;
         double totalPending = 0.0;
 
         for (var student in students) {
           final studentId = student['id'];
-          final paymentStatus = _studentPaymentStatus[studentId];
-          
-          // Check if current month is paid
-          final currentMonth = DateTime.now().month;
-          final isCurrentMonthPaid = paymentStatus?[currentMonth] ?? false;
-          
-          if (isCurrentMonthPaid) {
-            paidStudents++;
+          final isMonthlyPaid =
+              _studentPaymentStatus[studentId]?[currentMonth] ?? false;
+
+          final paidIds = student['paidExtraFeeIds'] as List<String>;
+          final pending = classExtraFees
+              .where((f) => !paidIds.contains(f['id']))
+              .toList();
+          student['pendingExtraFees'] = pending;
+
+          bool hasAnyPending = !isMonthlyPaid || pending.isNotEmpty;
+
+          if (!hasAnyPending) {
+            paidStudentsCount++;
+          } else {
+            pendingStudentsCount++;
+          }
+
+          // Summary calculations
+          if (isMonthlyPaid) {
             totalCollected += monthlyFee;
           } else {
-            pendingStudents++;
             totalPending += monthlyFee;
+          }
+
+          // Count extra fees
+          // We can't easily sum all history, so just current month + active extras
+          for (var fee in classExtraFees) {
+            if (paidIds.contains(fee['id'])) {
+              totalCollected += (fee['amount'] ?? 0.0).toDouble();
+            } else {
+              totalPending += (fee['amount'] ?? 0.0).toDouble();
+            }
           }
         }
 
         _classSummary[classId] = {
           'totalStudents': students.length,
-          'paidStudents': paidStudents,
-          'pendingStudents': pendingStudents,
+          'paidStudents': paidStudentsCount,
+          'pendingStudents': pendingStudentsCount,
           'totalFeesCollected': totalCollected,
           'totalFeesPending': totalPending,
           'monthlyFee': monthlyFee,
@@ -285,155 +340,186 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                       onChanged: _filterByClass,
                     ),
                   ),
+                  const VerticalDivider(width: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Pending Only',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      Switch(
+                        value: _showPendingOnly,
+                        onChanged: (value) =>
+                            setState(() => _showPendingOnly = value),
+                        activeColor: Colors.orange,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
 
           // Summary Cards
-          if (!_isLoading && _classSummary.isNotEmpty)
-            _buildSummaryCards(),
+          if (!_isLoading && _classSummary.isNotEmpty) _buildSummaryCards(),
 
           // Classes List
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredClasses.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.class_, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              'No classes found',
-                              style: TextStyle(color: Colors.grey),
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.class_, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'No classes found',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredClasses.length,
+                    itemBuilder: (context, index) {
+                      final classData = _filteredClasses[index];
+                      final classId = classData['id'];
+                      final students = _classStudents[classId] ?? [];
+                      final summary = _classSummary[classId] ?? {};
+                      final isExpanded = _expandedClasses[classId] ?? false;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 4,
+                        child: ExpansionTile(
+                          key: Key(classId),
+                          initiallyExpanded: isExpanded,
+                          onExpansionChanged: (expanded) {
+                            setState(() {
+                              _expandedClasses[classId] = expanded;
+                            });
+                          },
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.blue[50],
+                            child: Text(
+                              (classData['name'] ?? 'C')[0],
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                          ),
+                          title: Text(
+                            _getClassName(classData),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${students.length} students • \$${summary['monthlyFee'] ?? 0} monthly',
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[50],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Paid: ${summary['paidStudents']}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange[50],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Pending: ${summary['pendingStudents']}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '\$${summary['totalFeesCollected']?.toStringAsFixed(0) ?? '0'}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              Text(
+                                'Collected',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          children: [
+                            if (students.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(
+                                  child: Text(
+                                    'No students in this class',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                              )
+                            else
+                              ...students
+                                  .where((s) {
+                                    if (!_showPendingOnly) return true;
+                                    final currentMonth = DateTime.now().month;
+                                    final isMonthlyPaid =
+                                        _studentPaymentStatus[s['id']]?[currentMonth] ??
+                                        false;
+                                    final hasPendingExtras =
+                                        (s['pendingExtraFees'] as List)
+                                            .isNotEmpty;
+                                    return !isMonthlyPaid || hasPendingExtras;
+                                  })
+                                  .map(
+                                    (student) =>
+                                        _buildStudentTile(student, classData),
+                                  ),
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _filteredClasses.length,
-                        itemBuilder: (context, index) {
-                          final classData = _filteredClasses[index];
-                          final classId = classData['id'];
-                          final students = _classStudents[classId] ?? [];
-                          final summary = _classSummary[classId] ?? {};
-                          final isExpanded = _expandedClasses[classId] ?? false;
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            elevation: 4,
-                            child: ExpansionTile(
-                              key: Key(classId),
-                              initiallyExpanded: isExpanded,
-                              onExpansionChanged: (expanded) {
-                                setState(() {
-                                  _expandedClasses[classId] = expanded;
-                                });
-                              },
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.blue[50],
-                                child: Text(
-                                  (classData['name'] ?? 'C')[0],
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              title: Text(
-                                _getClassName(classData),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${students.length} students • \$${summary['monthlyFee'] ?? 0} monthly',
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[50],
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Paid: ${summary['paidStudents']}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.green[700],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange[50],
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Pending: ${summary['pendingStudents']}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.orange[700],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '\$${summary['totalFeesCollected']?.toStringAsFixed(0) ?? '0'}',
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Collected',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              children: [
-                                if (students.isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.all(16),
-                                    child: Center(
-                                      child: Text(
-                                        'No students in this class',
-                                        style: TextStyle(color: Colors.grey),
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  ...students.map((student) => 
-                                      _buildStudentTile(student, classData)),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -463,16 +549,41 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildMiniSummaryCard('Classes', totalClasses.toString(), Icons.class_, Colors.blue),
-          _buildMiniSummaryCard('Students', totalStudents.toString(), Icons.people, Colors.purple),
-          _buildMiniSummaryCard('Collected', '\$${totalCollected.toInt()}', Icons.attach_money, Colors.green),
-          _buildMiniSummaryCard('Pending', '\$${totalPending.toInt()}', Icons.pending, Colors.orange),
+          _buildMiniSummaryCard(
+            'Classes',
+            totalClasses.toString(),
+            Icons.class_,
+            Colors.blue,
+          ),
+          _buildMiniSummaryCard(
+            'Students',
+            totalStudents.toString(),
+            Icons.people,
+            Colors.purple,
+          ),
+          _buildMiniSummaryCard(
+            'Collected',
+            '\$${totalCollected.toInt()}',
+            Icons.attach_money,
+            Colors.green,
+          ),
+          _buildMiniSummaryCard(
+            'Pending',
+            '\$${totalPending.toInt()}',
+            Icons.pending,
+            Colors.orange,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMiniSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMiniSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, size: 20, color: color),
@@ -485,15 +596,15 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
             color: color,
           ),
         ),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-        ),
+        Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
     );
   }
 
-  Widget _buildStudentTile(Map<String, dynamic> student, Map<String, dynamic> classData) {
+  Widget _buildStudentTile(
+    Map<String, dynamic> student,
+    Map<String, dynamic> classData,
+  ) {
     final studentName = student['name'] ?? 'Unknown';
     final studentEmail = student['email'] ?? '';
     final rollNumber = student['rollNumber'] ?? 'N/A';
@@ -502,7 +613,8 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
 
     // Check current month payment status
     final currentMonth = DateTime.now().month;
-    final isCurrentMonthPaid = _studentPaymentStatus[student['id']]?[currentMonth] ?? false;
+    final isCurrentMonthPaid =
+        _studentPaymentStatus[student['id']]?[currentMonth] ?? false;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -513,7 +625,9 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isCurrentMonthPaid ? Colors.green[50] : Colors.orange[50],
+          backgroundColor: isCurrentMonthPaid
+              ? Colors.green[50]
+              : Colors.orange[50],
           child: Icon(
             isCurrentMonthPaid ? Icons.check : Icons.pending,
             color: isCurrentMonthPaid ? Colors.green : Colors.orange,
@@ -532,6 +646,15 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
               'Fee: \$$monthlyFee/month',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
+            if ((student['pendingExtraFees'] as List).isNotEmpty)
+              Text(
+                'Extra Pending: ${(student['pendingExtraFees'] as List).map((f) => f['title']).join(", ")}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
           ],
         ),
         trailing: Row(
@@ -540,7 +663,9 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isCurrentMonthPaid ? Colors.green[50] : Colors.orange[50],
+                color: isCurrentMonthPaid
+                    ? Colors.green[50]
+                    : Colors.orange[50],
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -548,7 +673,9 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: isCurrentMonthPaid ? Colors.green[700] : Colors.orange[700],
+                  color: isCurrentMonthPaid
+                      ? Colors.green[700]
+                      : Colors.orange[700],
                 ),
               ),
             ),
@@ -623,7 +750,10 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
     return section.isNotEmpty ? '$name - Section $section' : name;
   }
 
-  void _showStudentDetails(Map<String, dynamic> student, Map<String, dynamic> classData) {
+  void _showStudentDetails(
+    Map<String, dynamic> student,
+    Map<String, dynamic> classData,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -651,7 +781,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showPaymentDialog(student, classData, _classMonthlyFees[classData['id']] ?? 0.0);
+              _showPaymentDialog(
+                student,
+                classData,
+                _classMonthlyFees[classData['id']] ?? 0.0,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color.fromARGB(255, 2, 18, 69),
@@ -683,7 +817,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
     );
   }
 
-  void _showPaymentDialog(Map<String, dynamic> student, Map<String, dynamic> classData, double monthlyFee) {
+  void _showPaymentDialog(
+    Map<String, dynamic> student,
+    Map<String, dynamic> classData,
+    double monthlyFee,
+  ) {
     final currentMonth = DateTime.now().month;
     final currentYear = DateTime.now().year;
     final monthName = _getMonthName(currentMonth);
@@ -762,7 +900,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
     });
   }
 
-  void _showAllMonthsPayment(Map<String, dynamic> student, Map<String, dynamic> classData, double monthlyFee) {
+  void _showAllMonthsPayment(
+    Map<String, dynamic> student,
+    Map<String, dynamic> classData,
+    double monthlyFee,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -789,7 +931,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
     );
   }
 
-  void _generateReceipt(Map<String, dynamic> student, Map<String, dynamic> classData, double amount) {
+  void _generateReceipt(
+    Map<String, dynamic> student,
+    Map<String, dynamic> classData,
+    double amount,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -879,7 +1025,9 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: feeController,
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Monthly Fee Amount',
                       prefixIcon: Icon(Icons.attach_money),
@@ -907,7 +1055,10 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                 onPressed: () async {
                   final fee = double.tryParse(feeController.text);
                   if (fee == null || fee <= 0) {
-                    _showSnackBar('Please enter a valid fee amount', isError: true);
+                    _showSnackBar(
+                      'Please enter a valid fee amount',
+                      isError: true,
+                    );
                     return;
                   }
 
@@ -919,11 +1070,11 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                             .collection('Classes')
                             .doc(classData['id'])
                             .update({
-                          'monthlyFee': fee,
-                          'feeUpdatedAt': FieldValue.serverTimestamp(),
-                        });
+                              'monthlyFee': fee,
+                              'feeUpdatedAt': FieldValue.serverTimestamp(),
+                            });
                       }
-                      
+
                       _showSnackBar('Fee set to \$$fee for all classes');
                     } else {
                       // Apply to specific class
@@ -931,13 +1082,14 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                           .collection('Classes')
                           .doc(selectedClassId)
                           .update({
-                        'monthlyFee': fee,
-                        'feeUpdatedAt': FieldValue.serverTimestamp(),
-                      });
-                      
-                      final className = _classes
-                          .firstWhere((c) => c['id'] == selectedClassId)['name'];
-                      
+                            'monthlyFee': fee,
+                            'feeUpdatedAt': FieldValue.serverTimestamp(),
+                          });
+
+                      final className = _classes.firstWhere(
+                        (c) => c['id'] == selectedClassId,
+                      )['name'];
+
                       _showSnackBar('Fee set to \$$fee for $className');
                     }
 
@@ -962,8 +1114,18 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
 
   String _getMonthName(int month) {
     return [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ][month - 1];
   }
 }
@@ -1024,12 +1186,15 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Payment Details
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Month:', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text(
+                'Month:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               Text('${widget.month} ${widget.year}'),
             ],
           ),
@@ -1037,7 +1202,10 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Amount:', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text(
+                'Amount:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               Text(
                 '\$${widget.amount}',
                 style: const TextStyle(
@@ -1049,21 +1217,29 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Payment Method
-          const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.w500)),
+          const Text(
+            'Payment Method:',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _selectedPaymentMethod,
             decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
             ),
             items: ['Cash', 'Bank Transfer', 'Cheque', 'Online Payment', 'Card']
-                .map((method) => DropdownMenuItem(
-                      value: method,
-                      child: Text(method),
-                    ))
+                .map(
+                  (method) =>
+                      DropdownMenuItem(value: method, child: Text(method)),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() {
@@ -1072,20 +1248,25 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Notes
-          const Text('Notes (Optional):', style: TextStyle(fontWeight: FontWeight.w500)),
+          const Text(
+            'Notes (Optional):',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _notesController,
             decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               hintText: 'Enter any notes about this payment...',
             ),
             maxLines: 3,
           ),
           const SizedBox(height: 24),
-          
+
           // Buttons
           Row(
             children: [
@@ -1106,7 +1287,10 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    widget.onConfirm(_selectedPaymentMethod, _notesController.text);
+                    widget.onConfirm(
+                      _selectedPaymentMethod,
+                      _notesController.text,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 2, 18, 69),
