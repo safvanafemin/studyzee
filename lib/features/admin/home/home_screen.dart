@@ -123,7 +123,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           
           ListTile(
             leading: const Icon(Icons.payment),
-            title: const Text('Monthly Fees Settings'),
+            title: const Text('Fee Management'),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
