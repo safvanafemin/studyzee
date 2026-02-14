@@ -12,6 +12,7 @@ class NotificationService {
     required NotificationType type,
     required String senderId,
     required String senderName,
+    // removed targetCollection as we use 'users' exclusively now as clarified
   }) async {
     final notification = AppNotification(
       id: '',
@@ -93,32 +94,69 @@ class NotificationService {
     required String senderId,
     required String senderName,
   }) async {
-    Query query = _firestore.collection('users');
-    if (role != 'Both') {
-      query = query.where('role', isEqualTo: role);
-    }
-
-    final usersSnapshot = await query.get();
     final batch = _firestore.batch();
 
-    for (var doc in usersSnapshot.docs) {
-      final notification = AppNotification(
-        id: '',
-        title: title,
-        message: message,
-        type: type,
-        senderId: senderId,
-        senderName: senderName,
-        targetType: role.toLowerCase(),
-        createdAt: DateTime.now(),
-      );
-
-      final ref = _firestore
+    if (role == 'Student' || role == 'Both') {
+      final studentsSnapshot = await _firestore
           .collection('users')
-          .doc(doc.id)
-          .collection('notifications')
-          .doc();
-      batch.set(ref, notification.toFirestore());
+          .where('role', isEqualTo: 'Student')
+          .get();
+      for (var doc in studentsSnapshot.docs) {
+        final notification = AppNotification(
+          id: '',
+          title: title,
+          message: message,
+          type: type,
+          senderId: senderId,
+          senderName: senderName,
+          targetType: 'student',
+          createdAt: DateTime.now(),
+        );
+
+        final ref = _firestore
+            .collection('users')
+            .doc(doc.id)
+            .collection('notifications')
+            .doc();
+        batch.set(ref, notification.toFirestore());
+
+        // Also send to parent if student has a parentId
+        final studentData = doc.data();
+        if (studentData['parentId'] != null) {
+          final parentRef = _firestore
+              .collection('users')
+              .doc(studentData['parentId'])
+              .collection('notifications')
+              .doc();
+          batch.set(parentRef, notification.toFirestore());
+        }
+      }
+    }
+
+    if (role == 'Parent' || role == 'Both') {
+      final parentsSnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'Parent')
+          .get();
+      for (var doc in parentsSnapshot.docs) {
+        final notification = AppNotification(
+          id: '',
+          title: title,
+          message: message,
+          type: type,
+          senderId: senderId,
+          senderName: senderName,
+          targetType: 'parent',
+          createdAt: DateTime.now(),
+        );
+
+        final ref = _firestore
+            .collection('users')
+            .doc(doc.id)
+            .collection('notifications')
+            .doc();
+        batch.set(ref, notification.toFirestore());
+      }
     }
 
     await batch.commit();

@@ -32,8 +32,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _parents = [];
 
-  final bool _isLoading = false;
+  bool _isLoading = false;
   bool _isSending = false;
+  NotificationType _notificationType = NotificationType.announcement;
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   }
 
   Future<void> _loadClasses() async {
+    setState(() => _isLoading = true);
     try {
       final snapshot = await _firestore
           .collection('Classes')
@@ -81,6 +83,8 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       });
     } catch (e) {
       print('Error loading classes: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -89,7 +93,6 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       final snapshot = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'Student')
-          .orderBy('name')
           .get();
 
       setState(() {
@@ -104,6 +107,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             'parentName': data['parentName'],
           };
         }).toList();
+        // Sort manually to avoid index issues
+        _students.sort(
+          (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+        );
       });
     } catch (e) {
       print('Error loading students: $e');
@@ -115,7 +122,6 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       final snapshot = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'Parent')
-          .orderBy('name')
           .get();
 
       setState(() {
@@ -127,6 +133,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             'email': data['email'] ?? '',
           };
         }).toList();
+        // Sort manually
+        _parents.sort(
+          (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+        );
       });
     } catch (e) {
       print('Error loading parents: $e');
@@ -137,6 +147,20 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     if (_selectedClassId == null) return _students;
     return _students
         .where((student) => student['classId'] == _selectedClassId)
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _getFilteredParents() {
+    if (_selectedClassId == null) return _parents;
+
+    // Get unique parent IDs for students in the selected class
+    final parentIdsInClass = _students
+        .where((s) => s['classId'] == _selectedClassId && s['parentId'] != null)
+        .map((s) => s['parentId'] as String)
+        .toSet();
+
+    return _parents
+        .where((parent) => parentIdsInClass.contains(parent['id']))
         .toList();
   }
 
@@ -174,7 +198,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             classId: _selectedClassId!,
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -185,7 +209,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             recipientId: _selectedStudentId!,
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -196,7 +220,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             recipientId: _selectedParentId!,
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -207,7 +231,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             role: 'Student',
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -218,7 +242,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             role: 'Parent',
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -229,7 +253,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             role: 'Both',
             title: _titleController.text.trim(),
             message: _messageController.text.trim(),
-            type: NotificationType.announcement,
+            type: _notificationType,
             senderId: senderId,
             senderName: senderName,
           );
@@ -307,6 +331,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           children: [
             // Recipient Type Selection
             _buildRecipientTypeSection(),
+            const SizedBox(height: 20),
+
+            // Category Selection
+            _buildCategoryDropdown(),
             const SizedBox(height: 20),
 
             // Recipient Selection based on type
@@ -486,7 +514,14 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           ],
         );
       case 'parent':
-        return _buildParentDropdown();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildClassDropdown(),
+            const SizedBox(height: 16),
+            _buildParentDropdown(),
+          ],
+        );
       default:
         return Container(); // No selection needed for "all" types
     }
@@ -498,7 +533,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      initialValue: _selectedClassId,
+      value: _selectedClassId,
       decoration: InputDecoration(
         labelText: 'Select Class',
         prefixIcon: const Icon(Icons.class_),
@@ -523,9 +558,11 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             _selectedClassName = _classes.firstWhere(
               (c) => c['id'] == value,
             )['name'];
-            // Clear student selection when class changes
+            // Clear student and parent selection when class changes
             _selectedStudentId = null;
             _selectedStudentName = null;
+            _selectedParentId = null;
+            _selectedParentName = null;
           }
         });
       },
@@ -542,7 +579,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     final filteredStudents = _getFilteredStudents();
 
     return DropdownButtonFormField<String>(
-      initialValue: _selectedStudentId,
+      value: _selectedStudentId,
       decoration: InputDecoration(
         labelText: 'Select Student',
         prefixIcon: const Icon(Icons.school),
@@ -557,10 +594,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         ...filteredStudents.map((student) {
           return DropdownMenuItem<String>(
             value: student['id'],
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(student['name']),
+                Text('${student['name']} '),
                 Text(
                   student['className'] ?? '',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -596,25 +633,28 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       return const LinearProgressIndicator();
     }
 
+    final filteredParents = _getFilteredParents();
+
     return DropdownButtonFormField<String>(
-      initialValue: _selectedParentId,
+      value: _selectedParentId,
       decoration: InputDecoration(
         labelText: 'Select Parent',
         prefixIcon: const Icon(Icons.family_restroom),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabled: _selectedClassId != null,
       ),
       items: [
         const DropdownMenuItem<String>(
           value: null,
           child: Text('Select a parent'),
         ),
-        ..._parents.map((parent) {
+        ...filteredParents.map((parent) {
           return DropdownMenuItem<String>(
             value: parent['id'],
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(parent['name']),
+                Text('${parent['name']} '),
                 Text(
                   parent['email'] ?? '',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -624,21 +664,47 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           );
         }),
       ],
-      onChanged: (value) {
-        setState(() {
-          _selectedParentId = value;
-          if (value != null) {
-            _selectedParentName = _parents.firstWhere(
-              (p) => p['id'] == value,
-            )['name'];
-          }
-        });
-      },
+      onChanged: _selectedClassId != null
+          ? (value) {
+              setState(() {
+                _selectedParentId = value;
+                if (value != null) {
+                  _selectedParentName = filteredParents.firstWhere(
+                    (p) => p['id'] == value,
+                  )['name'];
+                }
+              });
+            }
+          : null,
       validator: (value) {
         if (_recipientType == 'parent' && (value == null || value.isEmpty)) {
           return 'Please select a parent';
         }
         return null;
+      },
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<NotificationType>(
+      value: _notificationType,
+      decoration: InputDecoration(
+        labelText: 'Notification Category',
+        prefixIcon: const Icon(Icons.category),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      items: NotificationType.values.map((type) {
+        return DropdownMenuItem<NotificationType>(
+          value: type,
+          child: Text(type.name[0].toUpperCase() + type.name.substring(1)),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() {
+            _notificationType = value;
+          });
+        }
       },
     );
   }

@@ -6,6 +6,7 @@ enum NotificationType {
   exam,
   fee,
   attendance,
+  alert,
   general,
 }
 
