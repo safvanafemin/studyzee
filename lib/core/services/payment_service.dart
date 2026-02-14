@@ -9,7 +9,7 @@ class PaymentService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Razorpay Key
-  static const String _razorpayKey = 'rzp_live_S3lSFoEAWYzwxn';
+  static const String _razorpayKey = 'rzp_test_RQX7adT0U42yu4';
 
   Function(PaymentSuccessResponse)? onSuccess;
   Function(PaymentFailureResponse)? onError;
@@ -59,10 +59,11 @@ class PaymentService {
     }
   }
 
-  /// Directly save payment success to Firestore
+  /// Directly save payment success to Firestore or update existing pending payment
   Future<void> savePaymentToFirestore({
     required String paymentId,
     required Map<String, dynamic> paymentDetails,
+    String? existingDocId,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -70,7 +71,6 @@ class PaymentService {
 
       final paymentData = {
         ...paymentDetails,
-        'studentId': user.uid,
         'status': 'paid',
         'verified': true, // Directly marking as true for student project
         'paymentDate': FieldValue.serverTimestamp(),
@@ -78,26 +78,44 @@ class PaymentService {
         'paymentMethod': 'Razorpay',
       };
 
-      await _firestore.collection('FeePayments').add(paymentData);
+      if (existingDocId != null) {
+        // Update existing pending record
+        await _firestore
+            .collection('FeePayments')
+            .doc(existingDocId)
+            .update(paymentData);
+      } else {
+        // Create new record (if not already exists - fallback)
+        await _firestore.collection('FeePayments').add({
+          ...paymentData,
+          'studentId': paymentDetails['studentId'] ?? user.uid,
+        });
+      }
+
+      final studentId = paymentDetails['studentId'] ?? user.uid;
+      final studentName = paymentDetails['studentName'] ?? 'Student';
 
       // Add notification for the student
       await _firestore
           .collection('users')
-          .doc(user.uid)
+          .doc(studentId)
           .collection('notifications')
           .add({
             'title': 'Fee Paid Successfully',
             'message':
-                'Your fee payment of ₹${paymentDetails['amount']} has been recorded.',
+                'Your fee payment of ₹${paymentDetails['amount']} for ${paymentDetails['title'] ?? 'Fees'} has been recorded.',
             'createdAt': FieldValue.serverTimestamp(),
             'isRead': false,
             'type': 'payment',
           });
 
       // Add notification for the parent if available
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      if (userDoc.exists && userDoc.data()?['parentId'] != null) {
-        final parentId = userDoc.data()?['parentId'];
+      final studentDoc = await _firestore
+          .collection('users')
+          .doc(studentId)
+          .get();
+      if (studentDoc.exists && studentDoc.data()?['parentId'] != null) {
+        final parentId = studentDoc.data()?['parentId'];
         await _firestore
             .collection('users')
             .doc(parentId)
@@ -105,7 +123,7 @@ class PaymentService {
             .add({
               'title': 'Fee Paid for Child',
               'message':
-                  'Fee payment of ₹${paymentDetails['amount']} for ${userDoc.data()?['name']} has been recorded.',
+                  'Fee payment of ₹${paymentDetails['amount']} for $studentName has been recorded.',
               'createdAt': FieldValue.serverTimestamp(),
               'isRead': false,
               'type': 'payment',

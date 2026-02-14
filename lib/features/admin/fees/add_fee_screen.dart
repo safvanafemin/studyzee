@@ -19,7 +19,10 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
   String? _selectedClassId;
   String? _selectedClassName;
   List<Map<String, dynamic>> _classes = [];
+  List<Map<String, dynamic>> _students = [];
+  final Set<String> _selectedStudentIds = {};
   bool _isLoading = false;
+  bool _selectAll = false;
 
   @override
   void initState() {
@@ -50,6 +53,35 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
     }
   }
 
+  Future<void> _loadStudents(String classId) async {
+    setState(() => _isLoading = true);
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'Student')
+          .where('classId', isEqualTo: classId)
+          .orderBy('name')
+          .get();
+
+      setState(() {
+        _students = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'name': data['name'] ?? '',
+            'rollNumber': data['rollNumber'] ?? '',
+          };
+        }).toList();
+        _selectedStudentIds.clear();
+        _selectAll = false;
+      });
+    } catch (e) {
+      print('Error loading students: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _createFee() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedClassId == null) {
@@ -58,24 +90,60 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
       ).showSnackBar(const SnackBar(content: Text('Please select a class')));
       return;
     }
+    if (_selectedStudentIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one student')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseFirestore.instance.collection('FeeStructures').add({
-        'title': _titleController.text.trim(),
-        'amount': double.parse(_amountController.text.trim()),
-        'description': _descriptionController.text.trim(),
-        'classId': _selectedClassId,
-        'className': _selectedClassName,
-        'dueDate': Timestamp.fromDate(_dueDate),
-        'createdAt': FieldValue.serverTimestamp(),
-        'isActive': true,
-      });
+      // 1. Create the Fee Structure (as a reference)
+      final feeStructureDoc = await FirebaseFirestore.instance
+          .collection('FeeStructures')
+          .add({
+            'title': _titleController.text.trim(),
+            'amount': double.parse(_amountController.text.trim()),
+            'description': _descriptionController.text.trim(),
+            'classId': _selectedClassId,
+            'className': _selectedClassName,
+            'dueDate': Timestamp.fromDate(_dueDate),
+            'createdAt': FieldValue.serverTimestamp(),
+            'isActive': true,
+          });
+
+      // 2. Create pending FeePayments for each selected student
+      final batch = FirebaseFirestore.instance.batch();
+      final amount = double.parse(_amountController.text.trim());
+      final title = _titleController.text.trim();
+
+      for (var studentId in _selectedStudentIds) {
+        final student = _students.firstWhere((s) => s['id'] == studentId);
+        final paymentRef = FirebaseFirestore.instance
+            .collection('FeePayments')
+            .doc();
+        batch.set(paymentRef, {
+          'feeId': feeStructureDoc.id,
+          'studentId': studentId,
+          'studentName': student['name'],
+          'classId': _selectedClassId,
+          'className': _selectedClassName,
+          'amount': amount,
+          'title': title,
+          'status': 'pending',
+          'dueDate': Timestamp.fromDate(_dueDate),
+          'createdAt': FieldValue.serverTimestamp(),
+          'type': 'custom',
+        });
+      }
+
+      await batch.commit();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fee structure created successfully')),
+          const SnackBar(content: Text('Fee assigned successfully')),
         );
         Navigator.pop(context, true);
       }
@@ -183,6 +251,9 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
                       (c) => c['id'] == value,
                     )['name'];
                   });
+                  if (value != null) {
+                    _loadStudents(value);
+                  }
                 },
                 validator: (value) {
                   if (value == null) return 'Please select a class';
@@ -190,6 +261,76 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
+              if (_selectedClassId != null) ...[
+                const Text(
+                  'Select Students',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Column(
+                    children: [
+                      CheckboxListTile(
+                        title: const Text(
+                          'Select All Students',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        value: _selectAll,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectAll = value ?? false;
+                            if (_selectAll) {
+                              _selectedStudentIds.addAll(
+                                _students.map((s) => s['id'] as String),
+                              );
+                            } else {
+                              _selectedStudentIds.clear();
+                            }
+                          });
+                        },
+                      ),
+                      const Divider(height: 1),
+                      if (_isLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_students.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('No students found in this class'),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _students.length,
+                          itemBuilder: (context, index) {
+                            final student = _students[index];
+                            final id = student['id'] as String;
+                            return CheckboxListTile(
+                              title: Text(student['name']),
+                              subtitle: Text('Roll: ${student['rollNumber']}'),
+                              value: _selectedStudentIds.contains(id),
+                              onChanged: (value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedStudentIds.add(id);
+                                  } else {
+                                    _selectedStudentIds.remove(id);
+                                    _selectAll = false;
+                                  }
+                                });
+                              },
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               InkWell(
                 onTap: () => _selectDate(context),
@@ -225,7 +366,7 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'CREATE FEE',
+                        'ASSIGN FEE',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
               ),

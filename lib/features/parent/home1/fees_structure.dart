@@ -52,6 +52,7 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
         await _paymentService.savePaymentToFirestore(
           paymentId: response.paymentId ?? 'N/A',
           paymentDetails: _processingPaymentData!,
+          existingDocId: _processingPaymentData!['paymentDocId'],
         );
         _showSnackBar('Payment successful!', isError: false);
 
@@ -200,47 +201,38 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
         });
       }
 
-      // 2. Custom Fees (FeeStructures)
-      if (classId != null) {
-        final feeStructuresQuery = await _firestore
-            .collection('FeeStructures')
-            .where('classId', isEqualTo: classId)
-            .get();
+      // 2. Custom Fees (FeeStructures assigned to this child)
+      final feePaymentsQuery = await _firestore
+          .collection('FeePayments')
+          .where('studentId', isEqualTo: childId)
+          .where('type', isEqualTo: 'custom')
+          .get();
 
-        for (var doc in feeStructuresQuery.docs) {
-          final data = doc.data();
-          final feeId = doc.id;
-          if (!(data['isActive'] ?? true)) continue;
+      for (var doc in feePaymentsQuery.docs) {
+        final paymentData = doc.data();
+        final status = paymentData['status'] ?? 'pending';
+        final isPaid = status == 'paid';
+        final amount = (paymentData['amount'] ?? 0.0).toDouble();
+        final dueDate = (paymentData['dueDate'] as Timestamp).toDate();
 
-          // Check if paid
-          final paymentQuery = await _firestore
-              .collection('FeePayments')
-              .where('studentId', isEqualTo: childId)
-              .where('feeId', isEqualTo: feeId)
-              .get();
-
-          final isPaid = paymentQuery.docs.isNotEmpty;
-          final dueDate = (data['dueDate'] as Timestamp).toDate();
-
-          allMonths.add({
-            'id': feeId,
-            'title': data['title'] ?? 'Unknown Fee',
-            'type': 'custom',
-            'amount': (data['amount'] ?? 0.0).toDouble(),
-            'status': isPaid ? 'paid' : 'unpaid',
-            'dueDate': dueDate,
-            'description': data['description'],
-            'paymentData': isPaid
-                ? {
-                    'id': paymentQuery.docs.first.id,
-                    ...paymentQuery.docs.first.data(),
-                    'paymentDate': paymentQuery.docs.first
-                        .data()['paymentDate']
-                        ?.toDate(),
-                  }
-                : null,
-          });
-        }
+        allMonths.add({
+          'id': paymentData['feeId'],
+          'paymentDocId': doc.id,
+          'title': paymentData['title'] ?? 'Unknown Fee',
+          'type': 'custom',
+          'amount': amount,
+          'status': isPaid ? 'paid' : 'unpaid',
+          'dueDate': dueDate,
+          'description': paymentData['description'],
+          'paymentData': isPaid
+              ? {
+                  'id': doc.id,
+                  ...paymentData,
+                  'paymentDate': (paymentData['paymentDate'] as Timestamp?)
+                      ?.toDate(),
+                }
+              : null,
+        });
       }
 
       // Sort by due date
@@ -264,6 +256,7 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
       'monthName': payment['monthName'],
       'year': payment['year'],
       'feeId': payment['type'] == 'custom' ? payment['id'] : null,
+      'paymentDocId': payment['paymentDocId'],
       'title': payment['title'],
       'type': payment['type'],
       'studentId': childId,

@@ -170,18 +170,17 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
         }
       }
 
-      // Mark paid months and extra fees
+      // Mark paid and pending months and extra fees
       for (var doc in paymentSnapshot.docs) {
         final data = doc.data();
         final studentId = data['studentId'];
         final feeId = data['feeId']; // Custom fee ID
         final month = data['month'];
         final status = data['status'];
+        final isPaid = status == 'paid' || status == 'completed';
 
-        if (studentId != null &&
-            (status == 'paid' || status == 'completed') &&
-            _studentPaymentStatus.containsKey(studentId)) {
-          if (month != null) {
+        if (studentId != null && _studentPaymentStatus.containsKey(studentId)) {
+          if (month != null && isPaid) {
             _studentPaymentStatus[studentId]![month] = true;
           }
 
@@ -192,7 +191,18 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                   .where((s) => s['id'] == studentId)
                   .firstOrNull;
               if (student != null) {
-                (student['paidExtraFeeIds'] as List<String>).add(feeId);
+                if (isPaid) {
+                  (student['paidExtraFeeIds'] as List<String>).add(feeId);
+                } else if (status == 'pending') {
+                  // This is an explicit pending fee assigned by admin
+                  (student['explicitPendingFees'] ??= <Map<String, dynamic>>[])
+                      .add({
+                        'id': doc.id,
+                        'feeId': feeId,
+                        'title': data['title'] ?? 'Extra Fee',
+                        'amount': (data['amount'] ?? 0.0).toDouble(),
+                      });
+                }
                 break;
               }
             }
@@ -207,11 +217,6 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
         final monthlyFee = (classData['monthlyFee'] ?? 0.0).toDouble();
         final currentMonth = DateTime.now().month;
 
-        // Extra fees for THIS class
-        final classExtraFees = allExtraFees
-            .where((f) => f['classId'] == classId)
-            .toList();
-
         int paidStudentsCount = 0;
         int pendingStudentsCount = 0;
         double totalCollected = 0.0;
@@ -223,12 +228,12 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
               _studentPaymentStatus[studentId]?[currentMonth] ?? false;
 
           final paidIds = student['paidExtraFeeIds'] as List<String>;
-          final pending = classExtraFees
-              .where((f) => !paidIds.contains(f['id']))
-              .toList();
-          student['pendingExtraFees'] = pending;
+          final explicitPending =
+              (student['explicitPendingFees'] as List?) ?? [];
 
-          bool hasAnyPending = !isMonthlyPaid || pending.isNotEmpty;
+          student['pendingExtraFees'] = explicitPending;
+
+          bool hasAnyPending = !isMonthlyPaid || explicitPending.isNotEmpty;
 
           if (!hasAnyPending) {
             paidStudentsCount++;
@@ -243,14 +248,21 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
             totalPending += monthlyFee;
           }
 
-          // Count extra fees
-          // We can't easily sum all history, so just current month + active extras
-          for (var fee in classExtraFees) {
-            if (paidIds.contains(fee['id'])) {
+          // Count explicit extra fees
+          // We only count what's explicitly assigned now or what was paid
+          for (var paidId in paidIds) {
+            // We'd need the amount here. For now, let's assume we can fetch it or just skip summary math for extras if complex
+            // But let's try to find it in allExtraFees
+            final fee = allExtraFees.firstWhere(
+              (f) => f['id'] == paidId,
+              orElse: () => {},
+            );
+            if (fee.isNotEmpty) {
               totalCollected += (fee['amount'] ?? 0.0).toDouble();
-            } else {
-              totalPending += (fee['amount'] ?? 0.0).toDouble();
             }
+          }
+          for (var pending in explicitPending) {
+            totalPending += (pending['amount'] ?? 0.0).toDouble();
           }
         }
 

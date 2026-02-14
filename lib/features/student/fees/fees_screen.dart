@@ -69,6 +69,8 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
         await _paymentService.savePaymentToFirestore(
           paymentId: response.paymentId ?? 'N/A',
           paymentDetails: _processingPaymentData!,
+          existingDocId:
+              _processingPaymentData!['paymentDocId'], // Pass the existing doc ID
         );
         _showSnackBar('Payment successful and recorded!', isError: false);
         _loadData();
@@ -181,58 +183,41 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
         _allPayments.add(paymentData);
       }
 
-      // 2. Load Admin Custom Fees (FeeStructures)
-      final feeStructuresQuery = await _firestore
-          .collection('FeeStructures')
-          .where('classId', isEqualTo: _userData!['classId'])
+      // 2. Load Admin Custom Fees (FeeStructures assigned to this student)
+      final feePaymentsQuery = await _firestore
+          .collection('FeePayments')
+          .where('studentId', isEqualTo: user.uid)
+          .where('type', isEqualTo: 'custom')
           .get();
 
-      for (var doc in feeStructuresQuery.docs) {
-        final data = doc.data();
-        final feeId = doc.id;
-        final isActive = data['isActive'] ?? true;
-        if (!isActive) continue;
+      for (var doc in feePaymentsQuery.docs) {
+        final paymentData = doc.data();
+        final status = paymentData['status'] ?? 'pending';
+        final isPaid = status == 'paid';
+        final amount = (paymentData['amount'] ?? 0.0).toDouble();
+        final dueDate = (paymentData['dueDate'] as Timestamp).toDate();
 
-        // Check if paid
-        final paymentQuery = await _firestore
-            .collection('FeePayments')
-            .where('studentId', isEqualTo: user.uid)
-            .where('feeId', isEqualTo: feeId)
-            .get();
-
-        final isPaid = paymentQuery.docs.isNotEmpty;
-        final dueDate = (data['dueDate'] as Timestamp).toDate();
-        final amount = (data['amount'] ?? 0.0).toDouble();
-
-        Map<String, dynamic> feeData;
+        Map<String, dynamic> feeData = {
+          'id': paymentData['feeId'],
+          'paymentDocId': doc.id,
+          'title': paymentData['title'] ?? 'Unknown Fee',
+          'type': 'custom',
+          'amount': amount,
+          'dueDate': dueDate,
+          'status': status,
+          'isOverdue': !isPaid && DateTime.now().isAfter(dueDate),
+          'description': paymentData['description'],
+          if (isPaid)
+            'paymentDate': (paymentData['paymentDate'] as Timestamp?)?.toDate(),
+          if (isPaid) 'receiptNumber': paymentData['receiptNumber'] ?? 'N/A',
+          if (isPaid)
+            'paymentMethod': paymentData['paymentMethod'] ?? 'Razorpay',
+        };
 
         if (isPaid) {
-          final paymentDoc = paymentQuery.docs.first.data();
-          feeData = {
-            'id': feeId,
-            'title': data['title'] ?? 'Unknown Fee',
-            'type': 'custom',
-            'amount': amount,
-            'dueDate': dueDate,
-            'paymentDate': (paymentDoc['paymentDate'] as Timestamp).toDate(),
-            'status': 'paid',
-            'receiptNumber': paymentDoc['receiptNumber'] ?? 'N/A',
-            'paymentMethod': paymentDoc['paymentMethod'] ?? 'Razorpay',
-            'description': data['description'],
-          };
           _paidPayments.add(feeData);
           _totalPaid += amount;
         } else {
-          feeData = {
-            'id': feeId,
-            'title': data['title'] ?? 'Unknown Fee',
-            'type': 'custom',
-            'amount': amount,
-            'dueDate': dueDate,
-            'status': 'pending',
-            'isOverdue': DateTime.now().isAfter(dueDate),
-            'description': data['description'],
-          };
           _pendingPayments.add(feeData);
           _totalDue += amount;
         }
@@ -292,10 +277,14 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
       'month': payment['month'], // nullable
       'monthName': payment['monthName'], // nullable
       'year': payment['year'], // nullable
-      'feeId': payment['id'], // NEW: for custom fees
+      'feeId': payment['type'] == 'custom'
+          ? payment['id']
+          : null, // NEW: for custom fees
+      'paymentDocId': payment['paymentDocId'], // Pass the Doc ID
       'title': payment['title'], // NEW
       'type': payment['type'], // NEW
       'studentName': _userData?['name'] ?? 'Student',
+      'studentId': _auth.currentUser?.uid,
       'classId': _userData?['classId'] ?? '',
       'className': _userData?['className'] ?? '',
     };
@@ -303,7 +292,9 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
     _paymentService.startPayment(
       amount: payment['amount'],
       name: 'College Fees',
-      description: payment['title'] ?? '${payment['monthName']} ${payment['year']} Payment',
+      description:
+          payment['title'] ??
+          '${payment['monthName']} ${payment['year']} Payment',
       email: _auth.currentUser?.email ?? 'student@college.edu',
       contact: _userData?['phoneNumber'] ?? '9999999999',
     );
@@ -347,7 +338,10 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
               ),
             ),
             const Divider(height: 32),
-            _buildDetailRow('Amount', '₹${payment['amount'].toStringAsFixed(2)}'),
+            _buildDetailRow(
+              'Amount',
+              '₹${payment['amount'].toStringAsFixed(2)}',
+            ),
             if (payment['monthName'] != null) ...[
               _buildDetailRow('Month', payment['monthName']),
               _buildDetailRow('Year', payment['year'].toString()),
