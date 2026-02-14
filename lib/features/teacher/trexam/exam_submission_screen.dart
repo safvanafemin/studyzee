@@ -450,7 +450,7 @@ class FullSubmissionReviewScreen extends StatelessWidget {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 12),
                   Text(
                     'Student Answer: $studentAnswer',

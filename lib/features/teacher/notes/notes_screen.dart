@@ -63,7 +63,7 @@ class _NotesScreenState extends State<NotesScreen>
 
       setState(() {
         _availableClasses = classesSnapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final className = data['name'] ?? 'Unknown';
           final section = data['section'] ?? '';
           final displayName = section.isNotEmpty
@@ -898,13 +898,13 @@ class NoteListCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const NoteListCard({
-    Key? key,
+    super.key,
     required this.note,
     required this.onTap,
     required this.onDownload,
     required this.onShare,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1135,13 +1135,13 @@ class NoteGridCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const NoteGridCard({
-    Key? key,
+    super.key,
     required this.note,
     required this.onTap,
     required this.onDownload,
     required this.onShare,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1287,7 +1287,7 @@ class NoteGridCard extends StatelessWidget {
 class NoteDetailScreen extends StatelessWidget {
   final Note note;
 
-  const NoteDetailScreen({Key? key, required this.note}) : super(key: key);
+  const NoteDetailScreen({super.key, required this.note});
 
   @override
   Widget build(BuildContext context) {
@@ -1551,8 +1551,7 @@ class ShareSheet extends StatelessWidget {
   final Note note;
   final String shareText;
 
-  const ShareSheet({Key? key, required this.note, required this.shareText})
-    : super(key: key);
+  const ShareSheet({super.key, required this.note, required this.shareText});
 
   @override
   Widget build(BuildContext context) {
@@ -1615,10 +1614,10 @@ class DownloadProgressDialog extends StatelessWidget {
   final String fileSize;
 
   const DownloadProgressDialog({
-    Key? key,
+    super.key,
     required this.fileName,
     required this.fileSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

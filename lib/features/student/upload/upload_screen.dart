@@ -27,13 +27,13 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
   String? _className;
 
   List<Map<String, dynamic>> _assignments = [];
-  List<Map<String, dynamic>> _submittedAssignments = [];
+  final List<Map<String, dynamic>> _submittedAssignments = [];
   Map<String, Map<String, dynamic>> _assignmentSubmissions = {};
 
   bool _isLoading = true;
-  bool _isSubmitting = false;
+  final bool _isSubmitting = false;
   String _filter = 'all'; // 'all', 'pending', 'submitted', 'graded'
-  String _viewMode = 'list'; // 'list', 'grid'
+  final String _viewMode = 'list'; // 'list', 'grid'
 
   @override
   void initState() {
@@ -1316,7 +1316,7 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
                       ),
                     )
                   else
-                    ...filteredAssignments.map(_buildAssignmentCard).toList(),
+                    ...filteredAssignments.map(_buildAssignmentCard),
                 ],
               ),
             ),

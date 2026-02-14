@@ -724,7 +724,7 @@ class _TrclassScreenState extends State<TrclassScreen>
               // Class Filter
               if (_classes.isNotEmpty)
                 DropdownButtonFormField<String>(
-                  value: selectedClassId,
+                  initialValue: selectedClassId,
                   decoration: InputDecoration(
                     labelText: 'Filter by Class',
                     border: OutlineInputBorder(
@@ -749,7 +749,7 @@ class _TrclassScreenState extends State<TrclassScreen>
                         value: classData['id'],
                         child: Text(displayName),
                       );
-                    }).toList(),
+                    }),
                   ],
                   onChanged: (value) {
                     setState(() {

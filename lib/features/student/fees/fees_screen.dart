@@ -20,9 +20,9 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
 
   Map<String, dynamic>? _userData;
   Map<String, dynamic>? _classInfo;
-  List<Map<String, dynamic>> _allPayments = [];
-  List<Map<String, dynamic>> _pendingPayments = [];
-  List<Map<String, dynamic>> _paidPayments = [];
+  final List<Map<String, dynamic>> _allPayments = [];
+  final List<Map<String, dynamic>> _pendingPayments = [];
+  final List<Map<String, dynamic>> _paidPayments = [];
   bool _isLoading = true;
   double _totalDue = 0.0;
   double _monthlyFee = 0.0;
@@ -120,8 +120,9 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
   Future<void> _loadAllPayments() async {
     try {
       final user = _auth.currentUser;
-      if (user == null || _userData == null || _userData!['classId'] == null)
+      if (user == null || _userData == null || _userData!['classId'] == null) {
         return;
+      }
       _allPayments.clear();
       _pendingPayments.clear();
       _paidPayments.clear();
@@ -592,8 +593,9 @@ class _StudentFeePaymentScreenState extends State<StudentFeePaymentScreen> {
     final pending = _allPayments
         .where((p) => p['status'] == 'pending')
         .toList();
-    if (pending.isEmpty)
+    if (pending.isEmpty) {
       return const Center(child: Text('No pending payments'));
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: pending.length,

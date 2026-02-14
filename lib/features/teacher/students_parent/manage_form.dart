@@ -58,7 +58,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: DropdownButtonFormField<String>(
-              value: _selectedClassId,
+              initialValue: _selectedClassId,
               decoration: InputDecoration(
                 labelText: 'Filter by Class',
                 border: OutlineInputBorder(

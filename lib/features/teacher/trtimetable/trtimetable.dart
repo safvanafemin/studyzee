@@ -1062,7 +1062,7 @@ class _TeacherTimetableViewScreenState
                   // Classes for the day
                   ...entries.map((entry) {
                     return _buildClassCard(entry);
-                  }).toList(),
+                  }),
 
                   const SizedBox(height: 20),
                 ],

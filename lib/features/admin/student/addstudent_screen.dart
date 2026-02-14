@@ -74,7 +74,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
           .get();
 
       final parents = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return {
           'id': doc.id,
           'name': data['parentName'] ?? data['name'] ?? '',
@@ -653,7 +653,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         final classes = snapshot.data?.docs ?? [];
 
         return DropdownButtonFormField<String>(
-          value: _selectedClassId,
+          initialValue: _selectedClassId,
           decoration: InputDecoration(
             labelText: 'Select Class',
             prefixIcon: const Icon(Icons.class_),
@@ -701,7 +701,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
 
   Widget _buildParentDropdown() {
     return DropdownButtonFormField<Map<String, dynamic>>(
-      value: _selectedParent,
+      initialValue: _selectedParent,
       decoration: InputDecoration(
         labelText: 'Select Parent',
         prefixIcon: const Icon(Icons.person_search),

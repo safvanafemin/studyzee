@@ -5,7 +5,6 @@ import 'package:studyzee/features/teacher/profile/profile_model.dart';
 import 'package:studyzee/features/teacher/assignment/assignment_screen.dart';
 import 'package:studyzee/features/teacher/attendace/attendance_screen.dart';
 import 'package:studyzee/features/teacher/notes/notes_screen.dart';
-import 'package:studyzee/features/teacher/notification/notification_send.dart';
 import 'package:studyzee/features/teacher/notification/notification_list.dart';
 import 'package:studyzee/features/teacher/profile/teacher_profile_screen.dart';
 import 'package:studyzee/features/teacher/students_parent/manage_form.dart';

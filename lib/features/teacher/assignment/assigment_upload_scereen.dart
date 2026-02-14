@@ -28,7 +28,7 @@ class _UploadAssignmentScreenState extends State<UploadAssignmentScreen> {
   final TextEditingController dueDateController = TextEditingController();
 
   List<Map<String, dynamic>> _classes = [];
-  List<String> _subjects = [
+  final List<String> _subjects = [
     'Mathematics',
     'Science',
     'English',
@@ -251,9 +251,7 @@ class _UploadAssignmentScreenState extends State<UploadAssignmentScreen> {
         'dueDate': Timestamp.fromDate(_selectedDueDate!),
         'fileUrl': _fileUrl,
         'fileName': _fileName,
-        'fileType': _selectedFile != null
-            ? _selectedFile!.path.split('.').last.toLowerCase()
-            : null,
+        'fileType': _selectedFile?.path.split('.').last.toLowerCase(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'status': 'active',
@@ -717,7 +715,7 @@ class _UploadAssignmentScreenState extends State<UploadAssignmentScreen> {
                   value: classData['id'],
                   child: Text(displayName),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {
@@ -760,7 +758,7 @@ class _UploadAssignmentScreenState extends State<UploadAssignmentScreen> {
                   value: subject,
                   child: Text(subject),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {

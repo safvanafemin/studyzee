@@ -218,7 +218,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.group, color: Colors.blueGrey),
               ),
-              value: _selectedTarget,
+              initialValue: _selectedTarget,
               items:
                   [
                     'All Users',
@@ -255,7 +255,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person, color: Colors.blueGrey),
                 ),
-                value: _selectedTeacherId,
+                initialValue: _selectedTeacherId,
                 items: _teachers.map((t) {
                   return DropdownMenuItem<String>(
                     value: t['id'],
@@ -275,7 +275,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.class_, color: Colors.blueGrey),
                 ),
-                value: _selectedClassId,
+                initialValue: _selectedClassId,
                 items: _classes.map((c) {
                   return DropdownMenuItem<String>(
                     value: c['id'],

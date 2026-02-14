@@ -268,12 +268,12 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
           for (int x = 1; x < paths.length; x++) {
             String folder = paths[x];
             if (folder != "Android") {
-              newPath += "/" + folder;
+              newPath += "/$folder";
             } else {
               break;
             }
           }
-          newPath = newPath + "/Download";
+          newPath = "$newPath/Download";
           directory = Directory(newPath);
         } else {
           directory = await getApplicationDocumentsDirectory();
@@ -1002,7 +1002,7 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                       value: classData['id'],
                       child: Text(displayName),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: (value) {
                   setState(() {
@@ -1048,7 +1048,7 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                         value: assignment['id'],
                         child: Text(assignment['title']),
                       );
-                    }).toList(),
+                    }),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -1432,12 +1432,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           for (int x = 1; x < paths.length; x++) {
             String folder = paths[x];
             if (folder != "Android") {
-              newPath += "/" + folder;
+              newPath += "/$folder";
             } else {
               break;
             }
           }
-          newPath = newPath + "/Download";
+          newPath = "$newPath/Download";
           directory = Directory(newPath);
         } else {
           directory = await getApplicationDocumentsDirectory();
@@ -1447,12 +1447,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           await directory.create(recursive: true);
         }
 
-        final file = File('${directory?.path}/${widget.fileName}');
+        final file = File('${directory.path}/${widget.fileName}');
         await file.writeAsBytes(response.bodyBytes);
 
         Navigator.pop(context);
         _showSuccess(
-          'File downloaded to ${directory?.path}/${widget.fileName}',
+          'File downloaded to ${directory.path}/${widget.fileName}',
         );
       } else {
         Navigator.pop(context);

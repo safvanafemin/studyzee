@@ -298,7 +298,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen> {
                                 : className;
                             final currentFee = (classData['monthlyFee'] ?? 0.0)
                                 .toDouble();
-                            final TextEditingController _feeController =
+                            final TextEditingController feeController =
                                 TextEditingController(
                                     text: currentFee.toString());
 
@@ -331,7 +331,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen> {
                                   SizedBox(
                                     width: 120,
                                     child: TextFormField(
-                                      controller: _feeController,
+                                      controller: feeController,
                                       keyboardType:
                                           const TextInputType.numberWithOptions(
                                               decimal: true),
@@ -351,7 +351,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen> {
                                   IconButton(
                                     onPressed: () {
                                       final newFee = double.tryParse(
-                                              _feeController.text) ??
+                                              feeController.text) ??
                                           0.0;
                                       if (newFee > 0) {
                                         _applyFeeToSpecificClass(

@@ -33,7 +33,7 @@ class _ParentProfileUpdateScreenState extends State<ParentProfileUpdateScreen> {
       TextEditingController();
 
   // Children Data
-  List<Map<String, dynamic>> _children = [];
+  final List<Map<String, dynamic>> _children = [];
 
   // Loading states
   bool _isLoading = true;
@@ -383,7 +383,7 @@ class _ParentProfileUpdateScreenState extends State<ParentProfileUpdateScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
         const SizedBox(height: 8),
         const Text(
           'Note: When you update your information, it will automatically update in your children\'s records.',
@@ -1187,7 +1187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Map<String, dynamic> _userData = {};
-  List<Map<String, dynamic>> _children = [];
+  final List<Map<String, dynamic>> _children = [];
   bool _isLoading = true;
 
   @override
@@ -1434,7 +1434,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
 
                         // Logout button

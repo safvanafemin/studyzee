@@ -25,7 +25,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   Map<String, Map<String, dynamic>> _monthlyStats = {};
   Map<String, int> _yearlyStats = {'present': 0, 'absent': 0, 'total': 0};
 
-  DateTime _selectedMonth = DateTime.now();
+  final DateTime _selectedMonth = DateTime.now();
   bool _isLoading = true;
   bool _showStats = true;
   String _filterStatus = 'All'; // 'All', 'Present', 'Absent'
@@ -140,7 +140,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
 
       // Calculate yearly stats
       for (var record in yearlyQuery.docs) {
-        final data = record.data() as Map<String, dynamic>;
+        final data = record.data();
         final status = data['status'] as String?;
 
         if (status != null) {
@@ -157,7 +157,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
       // Calculate monthly stats for current year
       final monthlyGroup = <String, Map<String, int>>{};
       for (var record in yearlyQuery.docs) {
-        final data = record.data() as Map<String, dynamic>;
+        final data = record.data();
         final status = data['status'] as String?;
         final dateTime = (data['dateTime'] as Timestamp?)?.toDate();
 

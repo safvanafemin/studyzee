@@ -169,7 +169,7 @@ class _AddFeeScreenState extends State<AddFeeScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.class_),
                 ),
-                value: _selectedClassId,
+                initialValue: _selectedClassId,
                 items: _classes.map((cls) {
                   return DropdownMenuItem<String>(
                     value: cls['id'],

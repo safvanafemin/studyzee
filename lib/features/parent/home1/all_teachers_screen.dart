@@ -17,7 +17,7 @@ class AllTeachersScreen extends StatefulWidget {
 class _AllTeachersScreenState extends State<AllTeachersScreen> {
   final ProfileService _profileService = ProfileService();
   late Stream<List<TeacherProfile>> _teachersStream;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
   @override
@@ -313,11 +313,11 @@ class _AllTeachersScreenState extends State<AllTeachersScreen> {
                 teacher.email,
                 onTap: () => _launchEmail(teacher.email),
               ),
-            if (teacher.phone != null && teacher.phone!.isNotEmpty)
+            if (teacher.phone.isNotEmpty)
               _buildContactInfoItem(
                 Icons.phone_outlined,
-                teacher.phone!,
-                onTap: () => _makePhoneCall(teacher.phone!),
+                teacher.phone,
+                onTap: () => _makePhoneCall(teacher.phone),
               ),
             if (teacher.qualification != null &&
                 teacher.qualification!.isNotEmpty)
@@ -353,8 +353,8 @@ class _AllTeachersScreenState extends State<AllTeachersScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed:
-                        teacher.phone != null && teacher.phone!.isNotEmpty
-                        ? () => _makePhoneCall(teacher.phone!)
+                        teacher.phone.isNotEmpty
+                        ? () => _makePhoneCall(teacher.phone)
                         : null,
                     icon: const Icon(Icons.phone, size: 18),
                     label: const Text('Call'),
@@ -411,8 +411,8 @@ class _AllTeachersScreenState extends State<AllTeachersScreen> {
         _launchEmail(teacher.email);
         break;
       case 'call':
-        if (teacher.phone != null && teacher.phone!.isNotEmpty) {
-          _makePhoneCall(teacher.phone!);
+        if (teacher.phone.isNotEmpty) {
+          _makePhoneCall(teacher.phone);
         }
         break;
     }
@@ -482,8 +482,8 @@ class _AllTeachersScreenState extends State<AllTeachersScreen> {
                 const SizedBox(height: 24),
                 // Contact Information
                 _buildProfileDetailItem(Icons.email, 'Email', teacher.email),
-                if (teacher.phone != null && teacher.phone!.isNotEmpty)
-                  _buildProfileDetailItem(Icons.phone, 'Phone', teacher.phone!),
+                if (teacher.phone.isNotEmpty)
+                  _buildProfileDetailItem(Icons.phone, 'Phone', teacher.phone),
                 if (teacher.subject != null && teacher.subject!.isNotEmpty)
                   _buildProfileDetailItem(
                     Icons.school,
@@ -527,10 +527,10 @@ class _AllTeachersScreenState extends State<AllTeachersScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    if (teacher.phone != null && teacher.phone!.isNotEmpty)
+                    if (teacher.phone.isNotEmpty)
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _makePhoneCall(teacher.phone!),
+                          onPressed: () => _makePhoneCall(teacher.phone),
                           icon: const Icon(Icons.phone),
                           label: const Text('Call'),
                           style: OutlinedButton.styleFrom(

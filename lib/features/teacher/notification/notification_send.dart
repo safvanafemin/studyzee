@@ -32,7 +32,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _parents = [];
 
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isSending = false;
 
   @override
@@ -498,7 +498,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: _selectedClassId,
+      initialValue: _selectedClassId,
       decoration: InputDecoration(
         labelText: 'Select Class',
         prefixIcon: const Icon(Icons.class_),
@@ -514,7 +514,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             value: classData['id'],
             child: Text(classData['name']),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (value) {
         setState(() {
@@ -542,7 +542,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     final filteredStudents = _getFilteredStudents();
 
     return DropdownButtonFormField<String>(
-      value: _selectedStudentId,
+      initialValue: _selectedStudentId,
       decoration: InputDecoration(
         labelText: 'Select Student',
         prefixIcon: const Icon(Icons.school),
@@ -568,7 +568,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
       onChanged: _selectedClassId != null
           ? (value) {
@@ -597,7 +597,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: _selectedParentId,
+      initialValue: _selectedParentId,
       decoration: InputDecoration(
         labelText: 'Select Parent',
         prefixIcon: const Icon(Icons.family_restroom),
@@ -622,7 +622,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (value) {
         setState(() {

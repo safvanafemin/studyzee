@@ -22,9 +22,9 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
 
   // Parent data
   Map<String, dynamic>? _parentData;
-  List<Map<String, dynamic>> _children = [];
-  Map<String, List<Map<String, dynamic>>> _childPayments = {};
-  Map<String, double> _childMonthlyFees = {};
+  final List<Map<String, dynamic>> _children = [];
+  final Map<String, List<Map<String, dynamic>>> _childPayments = {};
+  final Map<String, double> _childMonthlyFees = {};
   late PaymentService _paymentService;
   Map<String, dynamic>? _processingPaymentData;
 
@@ -865,7 +865,7 @@ class _ParentPaymentDialogContentState
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedPaymentMethod,
+            initialValue: _selectedPaymentMethod,
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

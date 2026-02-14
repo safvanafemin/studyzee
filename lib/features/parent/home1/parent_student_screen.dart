@@ -20,7 +20,7 @@ class _ParentStudentProgressScreenState
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  List<Map<String, dynamic>> _children = [];
+  final List<Map<String, dynamic>> _children = [];
   Map<String, dynamic>? _selectedChild;
   bool _isLoading = true;
   String _selectedView = 'overview'; // 'overview', 'attendance', 'assignments'
@@ -96,7 +96,7 @@ class _ParentStudentProgressScreenState
           .doc(childId)
           .get();
 
-      final studentData = studentDoc.data() as Map<String, dynamic>? ?? {};
+      final studentData = studentDoc.data() ?? {};
       final className = studentData['className'] ?? 'Unknown';
 
       // Calculate attendance for last 30 days
@@ -151,7 +151,7 @@ class _ParentStudentProgressScreenState
 
         if (assignmentDoc.exists) {
           final assignmentData =
-              assignmentDoc.data() as Map<String, dynamic>? ?? {};
+              assignmentDoc.data() ?? {};
           final subject = assignmentData['subject'] ?? 'General';
           final totalMarks = assignmentData['totalMarks'] ?? 100;
           final title = assignmentData['title'] ?? 'Assignment';
@@ -551,7 +551,7 @@ class _ParentStudentProgressScreenState
           const SizedBox(height: 16),
           ...recentAssignments.map((assignment) {
             return _buildAssignmentCard(assignment);
-          }).toList(),
+          }),
         ],
 
         const SizedBox(height: 20),
@@ -862,7 +862,7 @@ class _ParentStudentProgressScreenState
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

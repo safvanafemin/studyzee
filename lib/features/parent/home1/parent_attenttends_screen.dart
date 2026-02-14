@@ -18,7 +18,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
 
   // Parent data
   Map<String, dynamic>? _parentData;
-  List<Map<String, dynamic>> _children = [];
+  final List<Map<String, dynamic>> _children = [];
   String? _selectedChildId;
   Map<String, dynamic>? _selectedChild;
 
@@ -30,7 +30,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
   // Attendance data
   List<Map<String, dynamic>> _attendanceRecords = [];
   Map<String, dynamic> _monthlyStats = {};
-  Map<String, List<Map<String, dynamic>>> _attendanceByDate = {};
+  final Map<String, List<Map<String, dynamic>>> _attendanceByDate = {};
 
   // Loading states
   bool _isLoading = true;
@@ -123,7 +123,7 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
           .get();
 
       _attendanceRecords = attendanceQuery.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return {
           'id': doc.id,
           ...data,

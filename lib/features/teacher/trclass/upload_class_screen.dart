@@ -21,7 +21,7 @@ class _UploadRecordedClassScreenState extends State<UploadRecordedClassScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   List<Map<String, dynamic>> _classes = [];
-  List<String> _subjects = [
+  final List<String> _subjects = [
     'Mathematics',
     'Science',
     'English',
@@ -462,7 +462,7 @@ class _UploadRecordedClassScreenState extends State<UploadRecordedClassScreen> {
                   value: classData['id'],
                   child: Text(displayName),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {
@@ -512,7 +512,7 @@ class _UploadRecordedClassScreenState extends State<UploadRecordedClassScreen> {
                   value: subject,
                   child: Text(subject),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {

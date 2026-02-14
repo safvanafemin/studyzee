@@ -15,7 +15,7 @@ class TeacherExamsListScreen extends StatefulWidget {
 class _TeacherExamsListScreenState extends State<TeacherExamsListScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String _selectedFilter = 'all'; // all, upcoming
+  final String _selectedFilter = 'all'; // all, upcoming
 
   @override
   Widget build(BuildContext context) {

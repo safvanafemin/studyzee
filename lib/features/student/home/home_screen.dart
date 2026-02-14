@@ -410,8 +410,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
-    if (user == null)
+    if (user == null) {
       return const Scaffold(body: Center(child: Text('Please login')));
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFf0f4ff),

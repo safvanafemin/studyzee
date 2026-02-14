@@ -831,7 +831,7 @@ class _ClassScreenState extends State<ClassScreen> {
       setState(() {
         _classes = querySnapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          return {'id': doc.id, ...?data} as Map<String, dynamic>;
+          return {'id': doc.id, ...data};
         }).toList();
       });
     } catch (e) {
@@ -1423,7 +1423,7 @@ class _ClassScreenState extends State<ClassScreen> {
           const SizedBox(height: 8),
           Text(
             _selectedSubject != 'All'
-                ? 'No classes found for ${_selectedSubject}'
+                ? 'No classes found for $_selectedSubject'
                 : 'Your teacher hasn\'t uploaded any classes yet',
             style: TextStyle(
               fontSize: 14,

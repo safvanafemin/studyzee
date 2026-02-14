@@ -44,6 +44,7 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
     }
   }
 
+  @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
@@ -364,7 +365,7 @@ class _TakeExamScreenState extends State<TakeExamScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   int _currentQuestionIndex = 0;
-  Map<int, String> _answers = {};
+  final Map<int, String> _answers = {};
   Timer? _timer;
   int _remainingSeconds = 0;
   bool _isSubmitting = false;
@@ -726,7 +727,7 @@ class _TakeExamScreenState extends State<TakeExamScreen> {
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

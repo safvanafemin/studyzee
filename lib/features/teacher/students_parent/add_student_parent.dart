@@ -333,7 +333,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: _selectedClassId,
+      initialValue: _selectedClassId,
       decoration: const InputDecoration(
         labelText: 'Class',
         prefixIcon: Icon(Icons.school),
@@ -356,7 +356,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             value: classDoc.id,
             child: Text(displayName),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (value) {
         setState(() {
@@ -740,7 +740,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: _selectedClassId,
+      initialValue: _selectedClassId,
       decoration: InputDecoration(
         labelText: 'Class',
         prefixIcon: const Icon(Icons.school),
@@ -765,7 +765,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
             value: classDoc.id,
             child: Text(displayName),
           );
-        }).toList(),
+        }),
       ],
       onChanged: _isEditing
           ? (value) {

@@ -241,7 +241,7 @@ class _ClassSectionsTabState extends State<ClassSectionsTab> {
                               .map(
                                 (student) => _buildStudentTile(student, docId),
                               )
-                              .toList()
+                              
                         else
                           const Padding(
                             padding: EdgeInsets.all(16.0),

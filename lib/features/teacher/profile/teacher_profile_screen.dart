@@ -111,8 +111,9 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                                       fit: BoxFit.cover,
                                       loadingBuilder:
                                           (context, child, loadingProgress) {
-                                            if (loadingProgress == null)
+                                            if (loadingProgress == null) {
                                               return child;
+                                            }
                                             return const Center(
                                               child: CircularProgressIndicator(
                                                 color: Color(0xFF4285F4),
@@ -202,8 +203,8 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                     _buildProfileItem(
                       Icons.phone,
                       'Phone',
-                      profile.phone?.isNotEmpty == true
-                          ? profile.phone!
+                      profile.phone.isNotEmpty == true
+                          ? profile.phone
                           : 'Not set',
                     ),
                     _buildProfileItem(

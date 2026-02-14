@@ -27,7 +27,7 @@ class _CreateExamWithQuestionsScreenState extends State<CreateExamWithQuestionsS
   List<Map<String, dynamic>> questions = [];
   
   List<Map<String, dynamic>> _classes = [];
-  List<String> _subjects = [
+  final List<String> _subjects = [
     'Mathematics',
     'Science',
     'English',
@@ -549,7 +549,7 @@ class _CreateExamWithQuestionsScreenState extends State<CreateExamWithQuestionsS
                   value: classData['id'],
                   child: Text(displayName),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {
@@ -592,7 +592,7 @@ class _CreateExamWithQuestionsScreenState extends State<CreateExamWithQuestionsS
                   value: subject,
                   child: Text(subject),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {

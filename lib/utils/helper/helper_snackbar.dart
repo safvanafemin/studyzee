@@ -83,7 +83,7 @@ class _SnackBarConfig {
 
 // Example usage
 class SnackBarDemo extends StatelessWidget {
-  const SnackBarDemo({Key? key}) : super(key: key);
+  const SnackBarDemo({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -20,13 +20,13 @@ class ClassWiseStudentsScreen extends StatefulWidget {
 class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Map<String, dynamic>> _classes = [];
-  Map<String, List<Map<String, dynamic>>> _classStudents = {};
-  Map<String, Map<String, dynamic>> _classSummary = {};
+  final Map<String, List<Map<String, dynamic>>> _classStudents = {};
+  final Map<String, Map<String, dynamic>> _classSummary = {};
   bool _isLoading = true;
   String? _selectedClassId;
-  Map<String, bool> _expandedClasses = {};
-  Map<String, Map<int, bool>> _studentPaymentStatus = {};
-  Map<String, double> _classMonthlyFees = {};
+  final Map<String, bool> _expandedClasses = {};
+  final Map<String, Map<int, bool>> _studentPaymentStatus = {};
+  final Map<String, double> _classMonthlyFees = {};
   bool _showPendingOnly = false;
 
   // Add a GlobalKey for ScaffoldMessenger
@@ -315,7 +315,7 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedClassId,
+                      initialValue: _selectedClassId,
                       decoration: const InputDecoration(
                         labelText: 'Filter by Class',
                         border: InputBorder.none,
@@ -351,7 +351,7 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                         value: _showPendingOnly,
                         onChanged: (value) =>
                             setState(() => _showPendingOnly = value),
-                        activeColor: Colors.orange,
+                        activeThumbColor: Colors.orange,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ],
@@ -994,7 +994,7 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedClassId,
+                    initialValue: selectedClassId,
                     decoration: const InputDecoration(
                       labelText: 'Select Class (Optional)',
                       border: OutlineInputBorder(),
@@ -1225,7 +1225,7 @@ class _PaymentDialogContentState extends State<PaymentDialogContent> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedPaymentMethod,
+            initialValue: _selectedPaymentMethod,
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1337,7 +1337,7 @@ class _StudentMonthlyPaymentScreenState
     extends State<StudentMonthlyPaymentScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final int _currentYear = DateTime.now().year;
-  Map<int, Map<String, dynamic>> _monthPayments = {};
+  final Map<int, Map<String, dynamic>> _monthPayments = {};
   bool _isLoading = true;
 
   @override

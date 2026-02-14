@@ -25,8 +25,8 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
   List<DocumentSnapshot<Map<String, dynamic>>> _students = [];
 
   DateTime _selectedDate = DateTime.now();
-  Map<String, String> _attendanceStatus = {}; // studentId -> status
-  Map<String, bool> _isSelected = {}; // For checkboxes
+  final Map<String, String> _attendanceStatus = {}; // studentId -> status
+  final Map<String, bool> _isSelected = {}; // For checkboxes
 
   bool _isLoading = false;
   bool _isMarking = false;
@@ -73,7 +73,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
 
         // Filter manually by classId
         final filteredStudents = allStudents.docs.where((student) {
-          final data = student.data() as Map<String, dynamic>;
+          final data = student.data();
           return data['classId'] == _selectedClassId;
         }).toList();
 
@@ -108,7 +108,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
 
         setState(() {
           _students = allStudents.docs.where((student) {
-            final data = student.data() as Map<String, dynamic>;
+            final data = student.data();
             return data['classId'] == _selectedClassId;
           }).toList();
 
@@ -304,7 +304,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
               recipientId: parentId.toString(),
               title: 'Attendance Alert: Absent',
               message:
-                  '${studentData['name']} has been marked ABSENT for today (${dateStr}).',
+                  '${studentData['name']} has been marked ABSENT for today ($dateStr).',
               type: NotificationType.attendance,
               senderId: teacher?.uid ?? 'system',
               senderName: teacher?.displayName ?? 'Teacher',
@@ -391,7 +391,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _selectedClassId,
+              initialValue: _selectedClassId,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -417,7 +417,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                     value: classDoc.id,
                     child: Text(displayName),
                   );
-                }).toList(),
+                }),
               ],
               onChanged: (value) {
                 setState(() {
@@ -641,7 +641,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                     color: _getStatusColor(status),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
           actions: [
@@ -1161,7 +1161,7 @@ class _AttendanceScreenState extends State<TrAttendanceScreen> {
                         studentData['rollNumber'] ?? 'N/A',
                         status,
                       );
-                    }).toList(),
+                    }),
                   ],
                 ],
               ),

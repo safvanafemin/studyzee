@@ -24,7 +24,7 @@ class _UploadnoteScreenState extends State<UploadnoteScreen> {
   final ImagePicker _picker = ImagePicker();
 
   List<Map<String, dynamic>> _classes = [];
-  List<String> _subjects = [
+  final List<String> _subjects = [
     'Mathematics',
     'Science',
     'English',
@@ -60,7 +60,7 @@ class _UploadnoteScreenState extends State<UploadnoteScreen> {
 
       setState(() {
         _classes = querySnapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           return {
             'id': doc.id,
             'name': data['name'] ?? 'Unknown',
@@ -297,8 +297,9 @@ class _UploadnoteScreenState extends State<UploadnoteScreen> {
     if (path.endsWith('.doc') || path.endsWith('.docx')) return 'DOC';
     if (path.endsWith('.jpg') ||
         path.endsWith('.jpeg') ||
-        path.endsWith('.png'))
+        path.endsWith('.png')) {
       return 'IMAGE';
+    }
     if (path.endsWith('.txt')) return 'TEXT';
     return 'FILE';
   }
@@ -531,7 +532,7 @@ class _UploadnoteScreenState extends State<UploadnoteScreen> {
                   value: classData['id'],
                   child: Text(displayName),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {
@@ -581,7 +582,7 @@ class _UploadnoteScreenState extends State<UploadnoteScreen> {
                   value: subject,
                   child: Text(subject),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) {
               setState(() {

@@ -633,7 +633,7 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> _classes = [];
   String? _selectedClassId;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -742,7 +742,7 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
                           value: classData['id'],
                           child: Text(displayName),
                         );
-                      }).toList(),
+                      }),
                     ],
                     onChanged: (value) {
                       setState(() {
@@ -790,7 +790,6 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
         onPressed: _selectedClassId == null
             ? null
             : () async {
@@ -809,6 +808,7 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
                   await _addTimetableEntry(newItem);
                 }
               },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -1547,7 +1547,7 @@ class _AddTimetableScreenState extends State<AddTimetableScreen> {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -2013,7 +2013,7 @@ class _EditTimetableScreenState extends State<EditTimetableScreen> {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                         onChanged: (value) {
                           setState(() {

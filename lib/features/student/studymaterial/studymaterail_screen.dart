@@ -208,6 +208,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
   String _studentClassId = '';
   String _studentClassName = '';
   List<String> _studentSubjects = [];
+  @override
   void initState() {
     super.initState();
     _fadeController = AnimationController(
@@ -261,7 +262,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
 
       setState(() {
         _availableClasses = classesSnapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final className = data['name'] ?? 'Unknown';
           final section = data['section'] ?? '';
           final displayName = section.isNotEmpty
@@ -996,12 +997,12 @@ class StudentNoteListCard extends StatelessWidget {
   final VoidCallback onShare;
 
   const StudentNoteListCard({
-    Key? key,
+    super.key,
     required this.note,
     required this.onTap,
     required this.onDownload,
     required this.onShare,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1223,12 +1224,12 @@ class StudentNoteGridCard extends StatelessWidget {
   final VoidCallback onShare;
 
   const StudentNoteGridCard({
-    Key? key,
+    super.key,
     required this.note,
     required this.onTap,
     required this.onDownload,
     required this.onShare,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1377,8 +1378,7 @@ class StudentNoteGridCard extends StatelessWidget {
 class StudentNoteDetailScreen extends StatelessWidget {
   final Note note;
 
-  const StudentNoteDetailScreen({Key? key, required this.note})
-    : super(key: key);
+  const StudentNoteDetailScreen({super.key, required this.note});
 
   @override
   Widget build(BuildContext context) {
@@ -1641,8 +1641,7 @@ class ShareSheet extends StatelessWidget {
   final Note note;
   final String shareText;
 
-  const ShareSheet({Key? key, required this.note, required this.shareText})
-    : super(key: key);
+  const ShareSheet({super.key, required this.note, required this.shareText});
 
   @override
   Widget build(BuildContext context) {
@@ -1705,10 +1704,10 @@ class DownloadProgressDialog extends StatelessWidget {
   final String fileSize;
 
   const DownloadProgressDialog({
-    Key? key,
+    super.key,
     required this.fileName,
     required this.fileSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

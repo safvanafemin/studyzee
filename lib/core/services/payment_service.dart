@@ -113,7 +113,7 @@ class PaymentService {
       }
     } catch (e) {
       print('Error saving payment: $e');
-      throw e;
+      rethrow;
     }
   }
 }
