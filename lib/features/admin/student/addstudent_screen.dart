@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 class AddEditStudentScreen extends StatefulWidget {
@@ -174,37 +176,61 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
     });
 
     try {
-      String? parentId;
+      String parentId = '';
       String parentName = '';
       String parentEmail = '';
       String parentPassword = '';
 
+      // Initialize a temporary secondary Firebase app to create accounts without signing out the admin
+      FirebaseApp app = await Firebase.initializeApp(
+        name: 'SecondaryApp',
+        options: Firebase.app().options,
+      );
+      FirebaseAuth tempAuth = FirebaseAuth.instanceFor(app: app);
+
       if (_showParentFields) {
-        // Add new parent to Parents collection
+        // Create Parent Auth Account
+        UserCredential parentCredential = await tempAuth
+            .createUserWithEmailAndPassword(
+              email: _parentEmailController.text.trim(),
+              password: _parentPasswordController.text,
+            );
+
+        parentId = parentCredential.user!.uid;
+        parentName = _parentNameController.text.trim();
+        parentEmail = _parentEmailController.text.trim();
+        parentPassword = _parentPasswordController.text;
+
+        // Add Parent to general 'users' collection
+        await FirebaseFirestore.instance.collection('users').doc(parentId).set({
+          'uid': parentId,
+          'name': parentName,
+          'email': parentEmail,
+          'role': 'Parent',
+          'status': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // Add new parent to Parents collection (existing logic)
         final newParentData = {
-          'parentName': _parentNameController.text.trim(),
-          'parentEmail': _parentEmailController.text.trim(),
-          'parentPassword': _parentPasswordController.text,
+          'id': parentId,
+          'parentName': parentName,
+          'parentEmail': parentEmail,
+          'parentPassword': parentPassword,
+          'uid': parentId,
           'createdAt': DateTime.now(),
           'status': 1,
         };
 
-        final parentDocRef = await FirebaseFirestore.instance
+        await FirebaseFirestore.instance
             .collection('Parents')
-            .add(newParentData);
-
-        await parentDocRef.update({'id': parentDocRef.id});
-
-        parentId = parentDocRef.id;
-        parentName = _parentNameController.text.trim();
-        parentEmail = _parentEmailController.text.trim();
-        parentPassword = _parentPasswordController.text;
+            .doc(parentId)
+            .set(newParentData);
       } else {
         // Use existing parent
-        parentId = _selectedParent?['id'];
+        parentId = _selectedParent?['id'] ?? '';
         parentName = _selectedParent?['name'] ?? '';
         parentEmail = _selectedParent?['email'] ?? '';
-        // Don't include password for existing parent
       }
 
       final studentData = {
@@ -221,17 +247,22 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         'updatedAt': DateTime.now(),
       };
 
-      // Only add password for new parent
-      if (_showParentFields) {
-        studentData['parentPassword'] = parentPassword;
-      }
-
       if (widget.studentId != null) {
         // Update existing student
         await FirebaseFirestore.instance
             .collection('Students')
             .doc(widget.studentId)
             .update(studentData);
+
+        // Also update in 'users' collection
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.studentId)
+            .update({
+              'name': _studentNameController.text.trim(),
+              'classId': _selectedClassId,
+              'className': _selectedClassName,
+            });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -243,13 +274,50 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         }
       } else {
         // Add new student
+        // Create Student Auth Account
+        UserCredential studentCredential = await tempAuth
+            .createUserWithEmailAndPassword(
+              email: _studentEmailController.text.trim(),
+              password: _studentPasswordController.text,
+            );
+
+        String studentUid = studentCredential.user!.uid;
+        studentData['id'] = studentUid;
+        studentData['uid'] = studentUid;
         studentData['createdAt'] = DateTime.now();
 
-        final docRef = await FirebaseFirestore.instance
+        // Add to 'Students' collection
+        await FirebaseFirestore.instance
             .collection('Students')
-            .add(studentData);
+            .doc(studentUid)
+            .set(studentData);
 
-        await docRef.update({'id': docRef.id});
+        // Add to general 'users' collection
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(studentUid)
+            .set({
+              'uid': studentUid,
+              'name': _studentNameController.text.trim(),
+              'email': _studentEmailController.text.trim(),
+              'role': 'Student',
+              'classId': _selectedClassId,
+              'className': _selectedClassName,
+              'parentId': parentId,
+              'parentName': parentName,
+              'status': 1,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        // Link parent to student in 'users' collection if parent exists
+        if (parentId.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(parentId)
+              .update({
+                'children': FieldValue.arrayUnion([studentUid]),
+              });
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -260,6 +328,9 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
           );
         }
       }
+
+      // Cleanup temporary app instance
+      await app.delete();
 
       if (mounted) {
         Navigator.pop(context, true);

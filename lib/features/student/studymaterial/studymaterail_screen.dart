@@ -191,7 +191,6 @@ class StudentNotesScreen extends StatefulWidget {
 
 class _StudentNotesScreenState extends State<StudentNotesScreen>
     with TickerProviderStateMixin {
-  String selectedClass = 'My Class'; // Changed default to My Class
   String searchQuery = '';
   late AnimationController _fadeController;
   late AnimationController _listController;
@@ -200,14 +199,11 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  List<String> classFilters = ['My Class']; // Changed to start with My Class
   List<Note> allNotes = [];
-  List<Map<String, dynamic>> _availableClasses = [];
   bool _isLoading = true;
-  bool _isRefreshing = false;
   String _studentClassId = '';
   String _studentClassName = '';
-  List<String> _studentSubjects = [];
+
   @override
   void initState() {
     super.initState();
@@ -244,47 +240,14 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
         setState(() {
           _studentClassId = userData?['classId'] ?? '';
           _studentClassName = userData?['className'] ?? '';
-          _studentSubjects = List<String>.from(userData?['subjects'] ?? []);
         });
       }
-      // If student has a class, set selectedClass to 'My Class'
-      if (_studentClassName.isNotEmpty) {
-        setState(() {
-          selectedClass = 'My Class';
-        });
+      // Load notes for student's class
+      if (_studentClassId.isNotEmpty) {
+        await _loadNotes();
+      } else {
+        setState(() => _isLoading = false);
       }
-
-      // Load all classes
-      final classesSnapshot = await _firestore
-          .collection('Classes')
-          .orderBy('name')
-          .get();
-
-      setState(() {
-        _availableClasses = classesSnapshot.docs.map((doc) {
-          final data = doc.data();
-          final className = data['name'] ?? 'Unknown';
-          final section = data['section'] ?? '';
-          final displayName = section.isNotEmpty
-              ? '$className - Section $section'
-              : className;
-          final combinedName = section.isNotEmpty
-              ? '$className - $section'
-              : className;
-
-          return {
-            'id': doc.id,
-            'name': className,
-            'section': section,
-            'displayName': displayName,
-            'combinedName': combinedName,
-          };
-        }).toList();
-
-        _updateClassFilters();
-      });
-
-      await _loadNotes();
     } catch (e) {
       print('Error loading student class: $e');
       _showError('Error loading data');
@@ -294,9 +257,10 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
 
   Future<void> _loadNotes() async {
     try {
-      // Load notes - students can see all notes or filter by their class
+      // Query notes specifically for the student's classId
       final notesSnapshot = await _firestore
           .collection('notes')
+          .where('classId', isEqualTo: _studentClassId)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -305,16 +269,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
           final data = doc.data();
           final className = data['className'] ?? 'Unknown';
 
-          String matchedDisplayName = className;
-          for (var classData in _availableClasses) {
-            if (className == classData['combinedName'] ||
-                className == classData['displayName'] ||
-                _normalizeClassName(className) ==
-                    _normalizeClassName(classData['combinedName'])) {
-              matchedDisplayName = classData['displayName'];
-              break;
-            }
-          }
+          String matchedDisplayName = _studentClassName;
 
           return Note(
             id: doc.id,
@@ -336,65 +291,14 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
         }).toList();
 
         _isLoading = false;
-        _isRefreshing = false;
-        _updateClassFilters();
       });
     } catch (e) {
       print('Error loading notes: $e');
       _showError('Error loading notes');
       setState(() {
         _isLoading = false;
-        _isRefreshing = false;
       });
     }
-  }
-
-  String _normalizeClassName(String className) {
-    return className
-        .toLowerCase()
-        .replaceAll('+', '')
-        .replaceAll('section', '')
-        .replaceAll('-', '')
-        .replaceAll(' ', '')
-        .trim();
-  }
-
-  void _updateClassFilters() {
-    Set<String> uniqueFilters = {'My Class'}; // Changed to start with My Class
-
-    // Add "All Classes" option
-    uniqueFilters.add('All Classes');
-
-    for (var classData in _availableClasses) {
-      uniqueFilters.add(classData['displayName']);
-    }
-
-    for (var note in allNotes) {
-      if (note.className.isNotEmpty && note.className != 'Unknown') {
-        bool foundMatch = false;
-        for (var classData in _availableClasses) {
-          if (_normalizeClassName(note.className) ==
-              _normalizeClassName(classData['combinedName'])) {
-            foundMatch = true;
-            break;
-          }
-        }
-        if (!foundMatch && !uniqueFilters.contains(note.className)) {
-          uniqueFilters.add(note.className);
-        }
-      }
-    }
-
-    setState(() {
-      classFilters = uniqueFilters.toList()
-        ..sort((a, b) {
-          if (a == 'My Class') return -1; // My Class first
-          if (b == 'My Class') return 1;
-          if (a == 'All Classes') return -1;
-          if (b == 'All Classes') return 1;
-          return a.compareTo(b);
-        });
-    });
   }
 
   String _formatDate(dynamic timestamp) {
@@ -420,36 +324,8 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
   }
 
   List<Note> get filteredNotes {
-    return allNotes.where((note) {
-      // Handle "My Class" filter
-      if (selectedClass == 'My Class') {
-        final matchesMyClass = note.classId == _studentClassId;
-        final matchesSubject =
-            _studentSubjects.isEmpty ||
-            _studentSubjects.any(
-              (s) => s.toLowerCase() == note.subject.toLowerCase(),
-            );
-        return matchesMyClass && matchesSubject && _matchesSearch(note);
-      }
-
-      if (selectedClass == 'All Classes') {
-        return _matchesSearch(note);
-      }
-
-      bool matchesClass = false;
-      if (note.displayClassName == selectedClass) {
-        matchesClass = true;
-      } else if (note.className == selectedClass) {
-        matchesClass = true;
-      } else {
-        final normalizedNoteClass = _normalizeClassName(note.className);
-        final normalizedSelectedClass = _normalizeClassName(selectedClass);
-        matchesClass = normalizedNoteClass == normalizedSelectedClass;
-      }
-
-      final matchesSearch = _matchesSearch(note);
-      return matchesClass && matchesSearch;
-    }).toList();
+    if (searchQuery.isEmpty) return allNotes;
+    return allNotes.where((note) => _matchesSearch(note)).toList();
   }
 
   bool _matchesSearch(Note note) {
@@ -459,8 +335,6 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
     return note.title.toLowerCase().contains(query) ||
         note.subject.toLowerCase().contains(query) ||
         note.description.toLowerCase().contains(query) ||
-        note.className.toLowerCase().contains(query) ||
-        note.displayClassName.toLowerCase().contains(query) ||
         note.teacherName.toLowerCase().contains(query);
   }
 
@@ -567,7 +441,6 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
   }
 
   Future<void> _refreshNotes() async {
-    setState(() => _isRefreshing = true);
     await _loadNotes();
   }
 
@@ -587,11 +460,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
             Text(
               searchQuery.isNotEmpty
                   ? 'No notes found'
-                  : selectedClass == 'My Class'
-                  ? 'No notes available for your class yet'
-                  : selectedClass == 'All Classes'
-                  ? 'No notes available yet'
-                  : 'No notes for $selectedClass',
+                  : 'No notes available for your class yet',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -602,32 +471,11 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
             Text(
               searchQuery.isNotEmpty
                   ? 'Try a different search term or clear filters'
-                  : selectedClass == 'My Class'
-                  ? 'Your teacher will upload notes soon'
-                  : 'Check back later for new study materials',
+                  : 'Your teacher will upload notes soon',
               style: TextStyle(color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            if (selectedClass != 'All Classes')
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    selectedClass = 'All Classes';
-                    searchQuery = '';
-                  });
-                },
-                icon: const Icon(Icons.explore),
-                label: const Text('View All Classes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2196F3),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -686,11 +534,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        selectedClass == 'My Class'
-                                            ? 'My Class Notes'
-                                            : selectedClass == 'All Classes'
-                                            ? 'All Notes'
-                                            : selectedClass,
+                                        'My Class Notes',
                                         style: const TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
@@ -699,7 +543,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
                                       ),
                                       if (_studentClassName.isNotEmpty)
                                         Text(
-                                          'Your Class: $_studentClassName',
+                                          'Class: $_studentClassName',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[600],
@@ -756,9 +600,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
                               onChanged: (value) =>
                                   setState(() => searchQuery = value),
                               decoration: InputDecoration(
-                                hintText: selectedClass == 'My Class'
-                                    ? 'Search notes in your class...'
-                                    : 'Search notes by title, subject, or teacher...',
+                                hintText: 'Search notes in your class...',
                                 prefixIcon: const Icon(
                                   Icons.search,
                                   color: Color(0xFF2196F3),
@@ -786,76 +628,7 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
                         ),
                       ),
 
-                      // Class Filters
-                      if (classFilters.length > 1)
-                        Container(
-                          height: 70,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 4,
-                          ),
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            children: [
-                              ...classFilters.map((className) {
-                                final isSelected = selectedClass == className;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: FilterChip(
-                                    label: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (className == 'My Class')
-                                          const Padding(
-                                            padding: EdgeInsets.only(right: 4),
-                                            child: Icon(
-                                              Icons.star,
-                                              size: 14,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        Text(
-                                          className,
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize:
-                                                className == 'My Class' ||
-                                                    className == 'All Classes'
-                                                ? 14
-                                                : 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    selected: isSelected,
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        selectedClass = selected
-                                            ? className
-                                            : 'My Class'; // Default back to My Class when unselected
-                                      });
-                                    },
-                                    backgroundColor: Colors.white,
-                                    selectedColor: const Color(0xFF2196F3),
-                                    checkmarkColor: Colors.white,
-                                    labelStyle: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.black87,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    showCheckmark: className != 'My Class',
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
+                      const SizedBox(height: 8),
 
                       // Stats Bar
                       Padding(
@@ -867,35 +640,12 @@ class _StudentNotesScreenState extends State<StudentNotesScreen>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              selectedClass == 'My Class'
-                                  ? 'Notes for your class'
-                                  : 'Showing ${filteredNotes.length} of ${allNotes.length} notes',
+                              'Notes for your class',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 14,
                               ),
                             ),
-                            if (selectedClass != 'My Class')
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF2196F3,
-                                  ).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  selectedClass,
-                                  style: const TextStyle(
-                                    color: Color(0xFF2196F3),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -1043,27 +793,7 @@ class StudentNoteListCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.school,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                note.displayClassName,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             Icon(
@@ -1259,24 +989,7 @@ class StudentNoteGridCard extends StatelessWidget {
                       size: 24,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      note.displayClassName.split(' ').last,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2196F3),
-                      ),
-                    ),
-                  ),
+                  const SizedBox.shrink(),
                 ],
               ),
               const Spacer(),
@@ -1662,7 +1375,7 @@ class ShareSheet extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${note.subject} • ${note.displayClassName}',
+            note.subject,
             style: TextStyle(color: Colors.grey[600]),
           ),
           const SizedBox(height: 20),
