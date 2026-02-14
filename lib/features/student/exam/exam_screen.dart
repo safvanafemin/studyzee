@@ -335,7 +335,7 @@ class _StudentExamScreenState extends State<StudentExamScreen> {
       }
     } catch (e) {
       print('Error checking/starting exam: $e');
-      if (mounted) _showError('Error starting exam: $e');
+      if (mounted) _showError('Error starting exam: $e');65
     }
   }
 

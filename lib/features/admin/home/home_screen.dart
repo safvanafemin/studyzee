@@ -120,19 +120,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             title: const Text('Home'),
             onTap: () => Navigator.pop(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.add_card),
-            title: const Text('Extra Fees (Extra)'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FeesManageScreen(),
-                ),
-              );
-            },
-          ),
+          
           ListTile(
             leading: const Icon(Icons.payment),
             title: const Text('Monthly Fees Settings'),
