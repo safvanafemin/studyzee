@@ -352,7 +352,7 @@ class _ClassWiseStudentsScreenState extends State<ClassWiseStudentsScreen> {
                       onChanged: _filterByClass,
                     ),
                   ),
-                  const VerticalDivider(width: 24),
+
                   Row(
                     children: [
                       const Text(

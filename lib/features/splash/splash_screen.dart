@@ -70,7 +70,6 @@ class _SplashScreenState extends State<SplashScreen> {
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
       String userRole = userData['role'] ?? '';
       print('User Role: $userRole');
-  
 
       // Navigate based on role
       _navigateToHomeScreen(userRole);
@@ -130,25 +129,9 @@ class _SplashScreenState extends State<SplashScreen> {
             // Your logo/image
             Image.asset(
               'assets/images/logo.png',
-              width: 150,
-              height: 150,
+              width: 200,
+              height: 200,
               fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 20),
-            // Optional loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Color.fromARGB(255, 2, 18, 69),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Optional loading text
-            const Text(
-              'Loading...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color.fromARGB(255, 2, 18, 69),
-              ),
             ),
           ],
         ),
