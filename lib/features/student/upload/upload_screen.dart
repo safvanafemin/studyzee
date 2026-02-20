@@ -505,7 +505,7 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       Text(
-                        '${submission['marks']} / 100',
+                        '${submission['marks']}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -531,6 +531,42 @@ class _StudentAssignmentScreenState extends State<StudentAssignmentScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (submission['feedback'] != null &&
+            submission['feedback'].isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[100]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.feedback, size: 16, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Teacher Feedback',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  submission['feedback'],
+                  style: const TextStyle(fontSize: 14),
                 ),
               ],
             ),

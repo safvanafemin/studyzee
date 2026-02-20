@@ -432,26 +432,30 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return Colors.orange[50]!;
+    switch (status.toLowerCase()) {
       case 'graded':
-        return Colors.green[50]!;
+        return Colors.green[100]!;
+      case 'pending':
+        return Colors.orange[100]!;
+      case 'submitted':
+        return Colors.blue[100]!;
       case 'approved':
-        return Colors.blue[50]!;
+        return Colors.blue[100]!;
       case 'rejected':
-        return Colors.red[50]!;
+        return Colors.red[100]!;
       default:
-        return Colors.grey[50]!;
+        return Colors.grey[100]!;
     }
   }
 
   Color _getStatusTextColor(String status) {
-    switch (status) {
-      case 'pending':
-        return Colors.orange[700]!;
+    switch (status.toLowerCase()) {
       case 'graded':
         return Colors.green[700]!;
+      case 'pending':
+        return Colors.orange[700]!;
+      case 'submitted':
+        return Colors.blue[700]!;
       case 'approved':
         return Colors.blue[700]!;
       case 'rejected':
@@ -637,7 +641,9 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
               ),
 
               // Action Buttons for grading
-              if (submission['status'] == 'pending')
+              if (submission['status'] == 'pending' ||
+                  submission['status'] == 'submitted' ||
+                  submission['status'] == 'graded')
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -670,8 +676,17 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _showGradingDialog(submission, true),
-                          icon: const Icon(Icons.check, size: 18),
-                          label: const Text('Grade & Approve'),
+                          icon: Icon(
+                            submission['status'] == 'graded'
+                                ? Icons.edit
+                                : Icons.check,
+                            size: 18,
+                          ),
+                          label: Text(
+                            submission['status'] == 'graded'
+                                ? 'Update Grade'
+                                : 'Grade & Approve',
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -843,8 +858,10 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
             ),
           ],
 
-          // Action buttons for pending submissions
-          if (submission['status'] == 'pending') ...[
+          // Action buttons for submissions
+          if (submission['status'] == 'pending' ||
+              submission['status'] == 'submitted' ||
+              submission['status'] == 'graded') ...[
             const SizedBox(height: 12),
             Row(
               children: [
@@ -865,9 +882,11 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                     ),
-                    child: const Text(
-                      'Grade & Approve',
-                      style: TextStyle(color: Colors.white),
+                    child: Text(
+                      submission['status'] == 'graded'
+                          ? 'Update Grade'
+                          : 'Grade & Approve',
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 ),
@@ -880,8 +899,14 @@ class _AssignmentViewScreenState extends State<AssignmentViewScreen> {
   }
 
   void _showGradingDialog(Map<String, dynamic> submission, bool isApprove) {
-    TextEditingController marksController = TextEditingController();
-    TextEditingController feedbackController = TextEditingController();
+    TextEditingController marksController = TextEditingController(
+      text: submission['marks'] != null && submission['marks'] > 0
+          ? submission['marks'].toString()
+          : '',
+    );
+    TextEditingController feedbackController = TextEditingController(
+      text: submission['feedback'] ?? '',
+    );
 
     showDialog(
       context: context,
@@ -1451,9 +1476,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         await file.writeAsBytes(response.bodyBytes);
 
         Navigator.pop(context);
-        _showSuccess(
-          'File downloaded to ${directory.path}/${widget.fileName}',
-        );
+        _showSuccess('File downloaded to ${directory.path}/${widget.fileName}');
       } else {
         Navigator.pop(context);
         _showError('Failed to download file');
